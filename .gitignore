@@ -1,0 +1,5 @@
+config.php
+.env
+node_modules/
+assets/css/tailwind.min.css
+*.log
