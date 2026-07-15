@@ -9,8 +9,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($_POST['action'] === 'send_message') {
         $recipientId = (int) $_POST['recipient_id'];
         $body = trim($_POST['body'] ?? '');
+        $blockCheck = $pdo->prepare('SELECT 1 FROM user_blocks WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)');
+        $blockCheck->execute([$user['id'], $recipientId, $recipientId, $user['id']]);
+
         if ($recipientId === $user['id']) {
             flash_set('error', "You can't message yourself.");
+        } elseif ($blockCheck->fetchColumn()) {
+            flash_set('error', 'You cannot message this user.');
         } elseif ($body === '' || mb_strlen($body) > 2000) {
             flash_set('error', 'Message must be 1-2000 characters.');
         } elseif (!rate_limit('send_message', 30, 3600)) {
@@ -21,10 +26,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare('INSERT INTO notifications (user_id, type, data) VALUES (?, "new_message", JSON_OBJECT("from", ?))')
                 ->execute([$recipientId, $user['username']]);
         }
-        redirect('/inbox.php?with=' . $recipientId);
+        redirect('/inbox?with=' . $recipientId);
     } elseif ($_POST['action'] === 'mark_read') {
         $pdo->prepare('UPDATE notifications SET is_read = 1 WHERE user_id = ?')->execute([$user['id']]);
-        redirect('/inbox.php');
+        redirect('/inbox');
+    } elseif ($_POST['action'] === 'delete_notification') {
+        $pdo->prepare('DELETE FROM notifications WHERE id = ? AND user_id = ?')
+            ->execute([(int) ($_POST['notification_id'] ?? 0), $user['id']]);
+        redirect('/inbox');
     }
 }
 
@@ -75,7 +84,7 @@ require __DIR__ . '/includes/header.php';
       <?php if (!$threads): ?><p class="text-sm text-slate-500">No conversations yet. Visit a profile to message someone.</p><?php endif; ?>
       <div class="space-y-1">
         <?php foreach ($threads as $t): ?>
-          <a href="/inbox.php?with=<?= $t['id'] ?>" class="flex justify-between items-center px-2 py-1.5 rounded hover:bg-slate-100 <?= $with === (int) $t['id'] ? 'bg-slate-100' : '' ?>">
+          <a href="/inbox?with=<?= $t['id'] ?>" class="flex justify-between items-center px-2 py-1.5 rounded hover:bg-slate-100 <?= $with === (int) $t['id'] ? 'bg-slate-100' : '' ?>">
             <span class="text-sm"><?= e($t['username']) ?></span>
             <?php if ($t['unread'] > 0): ?><span class="text-xs bg-indigo-600 text-white rounded-full px-1.5"><?= (int) $t['unread'] ?></span><?php endif; ?>
           </a>
@@ -90,15 +99,33 @@ require __DIR__ . '/includes/header.php';
       <?php if (!$notifications): ?><p class="text-sm text-slate-500">No notifications.</p><?php endif; ?>
       <div class="space-y-1">
         <?php foreach ($notifications as $n): $data = json_decode($n['data'] ?? '{}', true); ?>
-          <div class="text-sm <?= $n['is_read'] ? 'text-slate-500' : 'text-slate-900 font-medium' ?>">
+          <div class="text-sm <?= $n['is_read'] ? 'text-slate-500' : 'text-slate-900 font-medium' ?> flex items-start justify-between gap-2 group">
+          <div>
             <?php if ($n['type'] === 'new_answer'): ?>
-              New answer on <a href="/question.php?slug=<?= e($data['question_slug'] ?? '') ?>" class="text-indigo-600 hover:underline"><?= e($data['question_title'] ?? 'your question') ?></a>
+              New answer on <a href="/question?slug=<?= e($data['question_slug'] ?? '') ?>" class="text-indigo-600 hover:underline"><?= e($data['question_title'] ?? 'your question') ?></a>
             <?php elseif ($n['type'] === 'new_message'): ?>
               New message from <?= e($data['from'] ?? 'someone') ?>
+            <?php elseif ($n['type'] === 'mention'): ?>
+              <?= e($data['by'] ?? 'Someone') ?> mentioned you on <a href="/question?slug=<?= e($data['question_slug'] ?? '') ?>" class="text-indigo-600 hover:underline"><?= e($data['question_title'] ?? '') ?></a>
+            <?php elseif ($n['type'] === 'watched_question_answer'): ?>
+              New answer on <a href="/q/<?= e($data['question_slug'] ?? '') ?>" class="text-indigo-600 hover:underline"><?= e($data['question_title'] ?? '') ?></a>, a question you're watching
+            <?php elseif ($n['type'] === 'followed_tag_activity'): ?>
+              New activity on a tag you follow: <a href="/question?slug=<?= e($data['question_slug'] ?? '') ?>" class="text-indigo-600 hover:underline"><?= e($data['question_title'] ?? '') ?></a>
+            <?php elseif ($n['type'] === 'bounty_awarded'): ?>
+              🏆 You won a +<?= (int) ($data['points'] ?? 0) ?> reputation bounty on <a href="/q/<?= e($data['question_slug'] ?? '') ?>" class="text-indigo-600 hover:underline"><?= e($data['question_title'] ?? '') ?></a>
+            <?php elseif ($n['type'] === 'bounty_refunded'): ?>
+              Your +<?= (int) ($data['points'] ?? 0) ?> reputation bounty on <a href="/q/<?= e($data['question_slug'] ?? '') ?>" class="text-indigo-600 hover:underline"><?= e($data['question_title'] ?? '') ?></a> expired with no answers and was refunded
             <?php else: ?>
               <?= e($n['type']) ?>
             <?php endif; ?>
             <div class="text-xs text-slate-400"><?= time_ago($n['created_at']) ?></div>
+          </div>
+          <form method="post" class="shrink-0 opacity-0 group-hover:opacity-100">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="delete_notification">
+            <input type="hidden" name="notification_id" value="<?= (int) $n['id'] ?>">
+            <button type="submit" aria-label="Delete notification" class="text-xs text-slate-400 hover:text-red-600">&times;</button>
+          </form>
           </div>
         <?php endforeach; ?>
       </div>

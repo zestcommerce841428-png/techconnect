@@ -1,5 +1,12 @@
 config.php
 .env
 node_modules/
-assets/css/tailwind.min.css
 *.log
+uploads/*
+!uploads/.htaccess
+backups/
+
+# NOTE: assets/css/tailwind.min.css and assets/dist/ (minified JS) are
+# intentionally tracked, not ignored — Hostinger shared hosting has no
+# npm/build step, so compiled assets must be committed and deployed as-is.
+# Run `npm run build` locally before every FTP deploy.

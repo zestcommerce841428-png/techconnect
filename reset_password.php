@@ -25,21 +25,28 @@ if (!$row) {
 $pageTitle = 'Set new password — ' . SITE_NAME;
 require __DIR__ . '/includes/header.php';
 ?>
-<div class="max-w-sm mx-auto bg-white border rounded-lg p-6">
-  <h1 class="text-xl font-semibold mb-4">Set a new password</h1>
+<div class="min-h-[70vh] flex items-center justify-center bg-[radial-gradient(ellipse_at_top,theme(colors.indigo.50),transparent_60%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(99,102,241,0.08),transparent_60%)] -mx-4 px-4 rounded-2xl">
+<div class="w-full max-w-sm card p-7">
+  <div class="text-center mb-6">
+    <a href="/" class="inline-block font-bold text-lg text-indigo-600">&larr; <?= e(setting('site_name', SITE_NAME)) ?></a>
+  </div>
+  <h1 class="text-xl font-semibold mb-5 text-center">Set a new password</h1>
   <?php foreach ($errors as $err): ?>
-    <div class="mb-3 rounded border border-red-300 bg-red-50 text-red-800 px-3 py-2 text-sm"><?= e($err) ?></div>
+    <div class="mb-3 rounded-lg border border-red-300 bg-red-50 text-red-800 px-3 py-2 text-sm"><?= e($err) ?></div>
   <?php endforeach; ?>
   <?php if ($row): ?>
-    <form method="post" class="space-y-3">
+    <form method="post" class="space-y-4">
       <?= csrf_field() ?>
       <input type="hidden" name="token" value="<?= e($token) ?>">
       <div>
-        <label class="block text-sm font-medium mb-1">New password</label>
-        <input type="password" name="password" required minlength="8" class="w-full border rounded px-3 py-2">
+        <label for="rp_password" class="block text-sm font-medium mb-1">New password</label>
+        <input id="rp_password" type="password" name="password" required minlength="8" autofocus class="w-full border rounded-lg px-3 py-2.5">
       </div>
-      <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded px-3 py-2">Update password</button>
+      <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg px-3 py-2.5">Update password</button>
     </form>
+  <?php else: ?>
+    <a href="/forgot_password" class="block text-center text-sm text-indigo-600 hover:underline font-medium">Request a new link</a>
   <?php endif; ?>
+</div>
 </div>
 <?php require __DIR__ . '/includes/footer.php'; ?>

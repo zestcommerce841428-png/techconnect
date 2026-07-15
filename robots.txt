@@ -5,4 +5,4 @@ Disallow: /includes/
 Disallow: /vendor/
 Allow: /
 
-Sitemap: /sitemap.php
+Sitemap: /sitemap.xml

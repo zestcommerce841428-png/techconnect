@@ -4,6 +4,21 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
+/** True unless the user has opted out of this email kind (answer|mention|message|tag_digest). */
+function user_email_pref(int $userId, string $kind): bool
+{
+    $column = $kind === 'tag_digest' ? 'email_tag_digest' : 'email_on_' . $kind;
+    if (!in_array($column, ['email_on_answer', 'email_on_mention', 'email_on_message', 'email_tag_digest'], true)) {
+        return true;
+    }
+    $stmt = db()->prepare("SELECT {$column}, muted_until FROM notification_prefs WHERE user_id = ?");
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch();
+    if ($row === false) return true; // no row = defaults, all on
+    if (!empty($row['muted_until']) && strtotime($row['muted_until']) > time()) return false;
+    return (bool) $row[$column];
+}
+
 function send_mail(string $toEmail, string $toName, string $subject, string $htmlBody): bool
 {
     $mail = new PHPMailer(true);

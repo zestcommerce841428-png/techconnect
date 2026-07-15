@@ -4,6 +4,7 @@ require_once __DIR__ . '/includes/auth.php';
 $pdo = db();
 $search = trim($_GET['q'] ?? '');
 $tagSlug = trim($_GET['tag'] ?? '');
+$categorySlug = trim($_GET['category'] ?? '');
 $scope = $_GET['scope'] ?? 'all'; // all | mine-country | mine-city
 $sort = $_GET['sort'] ?? 'recent'; // recent | votes | unanswered
 $page = max(1, (int) ($_GET['page'] ?? 1));
@@ -21,6 +22,16 @@ if ($tagSlug !== '') {
     $where[] = 'q.id IN (SELECT qt.question_id FROM question_tags qt JOIN tags t ON t.id = qt.tag_id WHERE t.slug = ?)';
     $params[] = $tagSlug;
 }
+$activeCategory = null;
+if ($categorySlug !== '') {
+    $catStmt = $pdo->prepare('SELECT * FROM categories WHERE slug = ?');
+    $catStmt->execute([$categorySlug]);
+    $activeCategory = $catStmt->fetch();
+    if ($activeCategory) {
+        $where[] = 'q.category_id = ?';
+        $params[] = $activeCategory['id'];
+    }
+}
 if ($scope === 'mine-country' && $user && !empty($user['location_country'] ?? null)) {
     $where[] = 'q.location_country = ?';
     $params[] = $user['location_country'];
@@ -35,12 +46,15 @@ $orderBy = match ($sort) {
     default => 'q.created_at DESC',
 };
 
-$whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+$where[] = "q.group_id IS NULL AND q.status != 'draft' AND q.merged_into_id IS NULL"; // group questions are shown on their group page only
+$whereSql = 'WHERE ' . implode(' AND ', $where);
 $offset = paginate_offset($page, $perPage);
 
-$sql = "SELECT q.*, u.username, GROUP_CONCAT(t.name SEPARATOR ',') AS tags
+$sql = "SELECT q.*, u.username, c.name AS category_name, c.icon AS category_icon,
+               GROUP_CONCAT(t.name SEPARATOR ',') AS tags
         FROM questions q
         JOIN users u ON u.id = q.user_id
+        LEFT JOIN categories c ON c.id = q.category_id
         LEFT JOIN question_tags qt ON qt.question_id = q.id
         LEFT JOIN tags t ON t.id = qt.tag_id
         $whereSql
@@ -52,30 +66,50 @@ $stmt->execute($params);
 $questions = $stmt->fetchAll();
 
 $popularTags = $pdo->query('SELECT name, slug FROM tags ORDER BY use_count DESC LIMIT 15')->fetchAll();
+$allCategories = $pdo->query('SELECT * FROM categories WHERE is_active = 1 ORDER BY sort_order, name')->fetchAll();
 
-$pageTitle = 'Browse questions — ' . SITE_NAME;
+$pageTitle = ($activeCategory ? $activeCategory['name'] . ' questions' : 'Browse questions') . ' — ' . SITE_NAME;
 require __DIR__ . '/includes/header.php';
 ?>
 <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
   <div class="md:col-span-3">
-    <form method="get" class="flex flex-wrap gap-2 mb-4">
-      <input type="text" name="q" value="<?= e($search) ?>" placeholder="Search questions..." class="flex-1 min-w-[200px] border rounded px-3 py-2">
-      <select name="scope" class="border rounded px-3 py-2">
+    <?php if ($activeCategory): ?>
+      <div class="mb-3 flex items-center gap-2">
+        <span class="text-lg"><?= e($activeCategory['icon'] ?? '') ?></span>
+        <h1 class="text-xl font-bold"><?= e($activeCategory['name']) ?></h1>
+        <a href="/questions" class="text-xs text-indigo-600 hover:underline">Clear category</a>
+      </div>
+    <?php endif; ?>
+    <form method="get" class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-4">
+      <input type="text" name="q" value="<?= e($search) ?>" placeholder="Search questions..." class="col-span-2 sm:flex-1 sm:min-w-[200px] border rounded-lg px-3 py-2">
+      <select name="category" class="border rounded-lg px-3 py-2 min-w-0">
+        <option value="">All categories</option>
+        <?php foreach ($allCategories as $c): ?>
+          <option value="<?= e($c['slug']) ?>" <?= $categorySlug === $c['slug'] ? 'selected' : '' ?>><?= e($c['icon'] ? $c['icon'] . ' ' : '') . e($c['name']) ?></option>
+        <?php endforeach; ?>
+      </select>
+      <select name="scope" class="border rounded-lg px-3 py-2 min-w-0">
         <option value="all" <?= $scope === 'all' ? 'selected' : '' ?>>Worldwide</option>
         <option value="mine-country" <?= $scope === 'mine-country' ? 'selected' : '' ?>>My country</option>
         <option value="mine-city" <?= $scope === 'mine-city' ? 'selected' : '' ?>>My city</option>
       </select>
-      <select name="sort" class="border rounded px-3 py-2">
+      <select name="sort" class="border rounded-lg px-3 py-2 min-w-0">
         <option value="recent" <?= $sort === 'recent' ? 'selected' : '' ?>>Most recent</option>
         <option value="votes" <?= $sort === 'votes' ? 'selected' : '' ?>>Top voted</option>
         <option value="unanswered" <?= $sort === 'unanswered' ? 'selected' : '' ?>>Unanswered</option>
       </select>
       <?php if ($tagSlug !== ''): ?><input type="hidden" name="tag" value="<?= e($tagSlug) ?>"><?php endif; ?>
-      <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded">Search</button>
+      <button type="submit" class="col-span-2 sm:col-auto bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg">Search</button>
     </form>
 
     <?php if (!$questions): ?>
-      <div class="border rounded-lg p-8 text-center bg-white text-slate-600">No questions match your filters.</div>
+      <div class="border rounded-lg p-8 text-center bg-white dark:bg-slate-900 dark:border-slate-800 text-slate-600 dark:text-slate-400">
+        <p class="mb-4">No questions match your filters.</p>
+        <?php if ($search !== ''): ?>
+          <p class="text-sm mb-3">Couldn't find an answer? Be the first to ask.</p>
+          <a href="/ask?title=<?= urlencode($search) ?>" class="inline-block bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded text-sm">Ask "<?= e(mb_strimwidth($search, 0, 60, '…')) ?>"</a>
+        <?php endif; ?>
+      </div>
     <?php else: ?>
       <div class="space-y-3">
         <?php foreach ($questions as $q): ?>

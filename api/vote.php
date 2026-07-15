@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/reputation.php';
 
 header('Content-Type: application/json');
 $user = current_user();
@@ -49,9 +50,22 @@ try {
     }
 
     $pdo->prepare("UPDATE {$table} SET vote_score = vote_score + ? WHERE id = ?")->execute([$delta, $id]);
-    $score = $pdo->prepare("SELECT vote_score FROM {$table} WHERE id = ?");
+    $score = $pdo->prepare("SELECT vote_score, user_id FROM {$table} WHERE id = ?");
     $score->execute([$id]);
-    $newScore = (int) $score->fetchColumn();
+    $row2 = $score->fetch();
+    $newScore = (int) $row2['vote_score'];
+
+    // Content author gains/loses reputation with the vote (never for self-votes,
+    // which the UI prevents, but guard anyway).
+    $authorId = (int) $row2['user_id'];
+    if ($authorId !== (int) $user['id']) {
+        // +1 new upvote => +10; removing an upvote => -10; switching direction counts once extra.
+        $repDelta = match ($delta) {
+            1 => 10, -1 => -10, 2 => 12, -2 => -12,
+            default => 0,
+        };
+        award_rep($authorId, $repDelta, $delta > 0 ? 'upvoted' : 'downvoted', $type, $id);
+    }
 
     $pdo->commit();
     echo json_encode(['score' => $newScore]);

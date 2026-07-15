@@ -1,13 +1,24 @@
 <?php
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/captcha.php';
 
-if (current_user()) redirect('/index.php');
+if (current_user()) redirect('/');
+
+if (setting('allow_registrations', '1') !== '1') {
+    $pageTitle = 'Registrations closed — ' . SITE_NAME;
+    require __DIR__ . '/includes/header.php';
+    echo '<div class="max-w-sm mx-auto bg-white border rounded-lg p-6 text-center text-slate-600">New registrations are temporarily closed. Please check back later.</div>';
+    require __DIR__ . '/includes/footer.php';
+    exit;
+}
 
 $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     if (!rate_limit('register', 5, 600)) {
         $errors[] = 'Too many attempts. Please try again later.';
+    } elseif (!captcha_verify()) {
+        $errors[] = 'Captcha verification failed. Please try again.';
     }
     $username = trim($_POST['username'] ?? '');
     $email = trim($_POST['email'] ?? '');
@@ -35,8 +46,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$errors) {
         $stmt = db()->prepare('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)');
         $stmt->execute([$username, $email, password_hash($password, PASSWORD_DEFAULT)]);
-        login_user((int) db()->lastInsertId());
-        flash_set('success', 'Welcome to ' . SITE_NAME . '!');
+        $newUserId = (int) db()->lastInsertId();
+        login_user($newUserId);
+
+        // Email verification: token link valid for 48h. Registration still succeeds if mail fails.
+        require_once __DIR__ . '/includes/mailer.php';
+        $token = bin2hex(random_bytes(32));
+        db()->prepare('INSERT INTO email_verifications (user_id, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 48 HOUR))
+                       ON DUPLICATE KEY UPDATE token = VALUES(token), expires_at = VALUES(expires_at)')
+            ->execute([$newUserId, $token]);
+        $link = SITE_URL . '/verify_email?token=' . $token;
+        @send_mail($email, $username, 'Verify your email — ' . SITE_NAME,
+            '<p>Hi ' . htmlspecialchars($username) . ',</p><p>Please confirm your email address:</p>'
+            . '<p><a href="' . htmlspecialchars($link) . '">Verify my email</a></p><p>This link expires in 48 hours.</p>');
+
+        require_once __DIR__ . '/includes/webhooks.php';
+        fire_webhook('user.registered', ['id' => $newUserId, 'username' => $username]);
+
+        flash_set('success', 'Welcome to ' . SITE_NAME . '! We sent a verification link to your email.');
         redirect('/index.php');
     }
 }
@@ -44,27 +71,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $pageTitle = 'Join ' . SITE_NAME;
 require __DIR__ . '/includes/header.php';
 ?>
-<div class="max-w-sm mx-auto bg-white border rounded-lg p-6">
-  <h1 class="text-xl font-semibold mb-4">Create your account</h1>
+<div class="min-h-[70vh] flex items-center justify-center bg-[radial-gradient(ellipse_at_top,theme(colors.indigo.50),transparent_60%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(99,102,241,0.08),transparent_60%)] -mx-4 px-4 rounded-2xl">
+<div class="w-full max-w-sm card p-7">
+  <div class="text-center mb-6">
+    <a href="/" class="inline-block font-bold text-lg text-indigo-600">&larr; <?= e(setting('site_name', SITE_NAME)) ?></a>
+  </div>
+  <h1 class="text-xl font-semibold mb-1 text-center">Create your account</h1>
+  <p class="text-sm text-slate-500 text-center mb-5">Free forever. Join the conversation in seconds.</p>
   <?php foreach ($errors as $err): ?>
-    <div class="mb-3 rounded border border-red-300 bg-red-50 text-red-800 px-3 py-2 text-sm"><?= e($err) ?></div>
+    <div class="mb-3 rounded-lg border border-red-300 bg-red-50 text-red-800 px-3 py-2 text-sm"><?= e($err) ?></div>
   <?php endforeach; ?>
-  <form method="post" class="space-y-3">
+  <form method="post" class="space-y-4">
     <?= csrf_field() ?>
     <div>
-      <label class="block text-sm font-medium mb-1">Username</label>
-      <input type="text" name="username" required class="w-full border rounded px-3 py-2" value="<?= e($_POST['username'] ?? '') ?>">
+      <label for="reg_username" class="block text-sm font-medium mb-1">Username</label>
+      <input id="reg_username" type="text" name="username" required autofocus class="w-full border rounded-lg px-3 py-2.5" value="<?= e($_POST['username'] ?? '') ?>">
     </div>
     <div>
-      <label class="block text-sm font-medium mb-1">Email</label>
-      <input type="email" name="email" required class="w-full border rounded px-3 py-2" value="<?= e($_POST['email'] ?? '') ?>">
+      <label for="reg_email" class="block text-sm font-medium mb-1">Email</label>
+      <input id="reg_email" type="email" name="email" required class="w-full border rounded-lg px-3 py-2.5" value="<?= e($_POST['email'] ?? '') ?>">
     </div>
     <div>
-      <label class="block text-sm font-medium mb-1">Password</label>
-      <input type="password" name="password" required minlength="8" class="w-full border rounded px-3 py-2">
+      <label for="reg_password" class="block text-sm font-medium mb-1">Password</label>
+      <input id="reg_password" type="password" name="password" required minlength="8" aria-describedby="reg_password_hint" class="w-full border rounded-lg px-3 py-2.5">
+      <p id="reg_password_hint" class="text-xs text-slate-400 mt-1">At least 8 characters.</p>
     </div>
-    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded px-3 py-2">Create account</button>
+    <?= captcha_field('register') ?>
+    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg px-3 py-2.5">Create account</button>
   </form>
-  <p class="text-sm mt-4">Already have an account? <a href="/login.php" class="text-indigo-600 hover:underline">Log in</a></p>
+  <?php require __DIR__ . '/includes/social_login_buttons.php'; ?>
+  <p class="text-sm mt-5 text-center">Already have an account? <a href="/login" class="text-indigo-600 hover:underline font-medium">Log in</a></p>
+</div>
 </div>
 <?php require __DIR__ . '/includes/footer.php'; ?>

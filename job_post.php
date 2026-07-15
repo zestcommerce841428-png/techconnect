@@ -1,8 +1,12 @@
 <?php
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/payments/payments.php';
 
 $user = require_login();
 $errors = [];
+$listingPriceCents = (int) setting('job_listing_price_cents', '2000');
+$currency = setting('currency', 'USD');
+$gatewaysAvailable = payment_available_gateways();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -11,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $company = trim($_POST['company'] ?? '');
     $location = trim($_POST['location'] ?? '');
     $isRemote = isset($_POST['is_remote']) ? 1 : 0;
+    $wantsFeatured = isset($_POST['featured']) && $gatewaysAvailable;
 
     if (mb_strlen($title) < 5 || mb_strlen($title) > 150) {
         $errors[] = 'Title must be between 5 and 150 characters.';
@@ -24,9 +29,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$errors) {
         $slug = unique_slug('jobs', $title);
         // New listings start pending and are reviewed by an admin before going live.
-        db()->prepare(
-            'INSERT INTO jobs (posted_by, title, slug, description, company, location, is_remote, status) VALUES (?, ?, ?, ?, ?, ?, ?, "pending")'
-        )->execute([$user['id'], $title, $slug, $description, $company ?: null, $location ?: null, $isRemote]);
+        $pdo = db();
+        $pdo->prepare(
+            'INSERT INTO jobs (posted_by, title, slug, description, company, location, is_remote, is_paid_listing, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, "pending")'
+        )->execute([$user['id'], $title, $slug, $description, $company ?: null, $location ?: null, $isRemote, $wantsFeatured ? 1 : 0]);
+        $jobId = (int) $pdo->lastInsertId();
+
+        if ($wantsFeatured) {
+            redirect('/checkout?item_type=job_listing&item_id=' . $jobId);
+        }
         flash_set('success', 'Your listing was submitted and is pending review.');
         redirect('/jobs.php');
     }
@@ -64,6 +75,12 @@ require __DIR__ . '/includes/header.php';
       <input type="checkbox" name="is_remote">
       Remote position
     </label>
+    <?php if ($gatewaysAvailable): ?>
+    <label class="flex items-center gap-2 text-sm border rounded p-3 bg-indigo-50">
+      <input type="checkbox" name="featured">
+      Feature this listing for <?= e(format_money($listingPriceCents)) ?> (you'll be sent to checkout after submitting)
+    </label>
+    <?php endif; ?>
     <p class="text-xs text-slate-500">Listings are reviewed before appearing publicly.</p>
     <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded">Submit listing</button>
   </form>

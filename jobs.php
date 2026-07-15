@@ -13,7 +13,7 @@ require __DIR__ . '/includes/header.php';
 ?>
 <div class="flex items-center justify-between mb-4">
   <h1 class="text-2xl font-bold">Jobs &amp; gigs</h1>
-  <a href="/job_post.php" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded text-sm">Post a job</a>
+  <a href="/job_post" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded text-sm">Post a job</a>
 </div>
 
 <?php if (!$jobs): ?>

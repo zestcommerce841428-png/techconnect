@@ -3,6 +3,9 @@ require_once __DIR__ . '/../includes/auth.php';
 $pageTitle = 'Jobs — Admin';
 require __DIR__ . '/includes/admin_header.php';
 
+require_once __DIR__ . '/../includes/permissions.php';
+require_permission($admin, 'manage_jobs');
+
 $pdo = db();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

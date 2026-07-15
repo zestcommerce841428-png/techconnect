@@ -18,3 +18,7 @@ define('SMTP_FROM_NAME', 'TechConnect');
 
 // Set to false in production
 define('APP_DEBUG', true);
+
+// Used to encrypt payment gateway API keys at rest in the database.
+// Generate your own for production, e.g.: php -r "echo bin2hex(random_bytes(32));"
+define('APP_KEY', 'CHANGE-ME-generate-a-random-32-byte-hex-key');

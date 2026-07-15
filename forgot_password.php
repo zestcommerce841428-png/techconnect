@@ -26,19 +26,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $pageTitle = 'Reset password — ' . SITE_NAME;
 require __DIR__ . '/includes/header.php';
 ?>
-<div class="max-w-sm mx-auto bg-white border rounded-lg p-6">
-  <h1 class="text-xl font-semibold mb-4">Reset your password</h1>
+<div class="min-h-[70vh] flex items-center justify-center bg-[radial-gradient(ellipse_at_top,theme(colors.indigo.50),transparent_60%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(99,102,241,0.08),transparent_60%)] -mx-4 px-4 rounded-2xl">
+<div class="w-full max-w-sm card p-7">
+  <div class="text-center mb-6">
+    <a href="/" class="inline-block font-bold text-lg text-indigo-600">&larr; <?= e(setting('site_name', SITE_NAME)) ?></a>
+  </div>
+  <h1 class="text-xl font-semibold mb-1 text-center">Reset your password</h1>
   <?php if ($sent): ?>
-    <p class="text-sm text-slate-700">If that email is registered, a reset link has been sent.</p>
+    <p class="text-sm text-slate-600 text-center mt-4">If that email is registered, a reset link has been sent. Check your inbox.</p>
+    <a href="/login" class="block text-center text-sm text-indigo-600 hover:underline font-medium mt-5">Back to log in</a>
   <?php else: ?>
-    <form method="post" class="space-y-3">
+    <p class="text-sm text-slate-500 text-center mb-5">Enter your email and we'll send you a reset link.</p>
+    <form method="post" class="space-y-4">
       <?= csrf_field() ?>
       <div>
-        <label class="block text-sm font-medium mb-1">Email</label>
-        <input type="email" name="email" required class="w-full border rounded px-3 py-2">
+        <label for="fp_email" class="block text-sm font-medium mb-1">Email</label>
+        <input id="fp_email" type="email" name="email" required autofocus class="w-full border rounded-lg px-3 py-2.5">
       </div>
-      <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded px-3 py-2">Send reset link</button>
+      <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg px-3 py-2.5">Send reset link</button>
     </form>
   <?php endif; ?>
+</div>
 </div>
 <?php require __DIR__ . '/includes/footer.php'; ?>

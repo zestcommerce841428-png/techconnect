@@ -1,0 +1,81 @@
+-- Public API keys, newsletter, testimonials, changelog, redirects, saved searches.
+
+CREATE TABLE api_keys (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    label VARCHAR(120) NOT NULL,
+    key_hash CHAR(64) NOT NULL UNIQUE,
+    key_prefix VARCHAR(12) NOT NULL,
+    last_used_at DATETIME DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    revoked_at DATETIME DEFAULT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE newsletter_subscribers (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(190) NOT NULL UNIQUE,
+    user_id INT UNSIGNED DEFAULT NULL,
+    unsubscribe_token VARCHAR(64) NOT NULL,
+    subscribed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    unsubscribed_at DATETIME DEFAULT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE newsletter_broadcasts (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    subject VARCHAR(200) NOT NULL,
+    body MEDIUMTEXT NOT NULL,
+    sent_count INT UNSIGNED NOT NULL DEFAULT 0,
+    sent_at DATETIME DEFAULT NULL,
+    created_by INT UNSIGNED NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE testimonials (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    author_name VARCHAR(120) NOT NULL,
+    author_role VARCHAR(120) DEFAULT NULL,
+    avatar_path VARCHAR(255) DEFAULT NULL,
+    quote TEXT NOT NULL,
+    rating TINYINT UNSIGNED DEFAULT NULL,
+    is_published TINYINT(1) NOT NULL DEFAULT 0,
+    sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE changelog_entries (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    version VARCHAR(30) DEFAULT NULL,
+    title VARCHAR(200) NOT NULL,
+    body MEDIUMTEXT NOT NULL,
+    entry_type ENUM('added','changed','fixed','removed') NOT NULL DEFAULT 'added',
+    is_published TINYINT(1) NOT NULL DEFAULT 0,
+    published_at DATETIME DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE redirects (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    from_path VARCHAR(255) NOT NULL UNIQUE,
+    to_path VARCHAR(255) NOT NULL,
+    status_code SMALLINT UNSIGNED NOT NULL DEFAULT 301,
+    hits INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE saved_searches (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    label VARCHAR(120) NOT NULL,
+    query_string VARCHAR(500) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE notification_prefs ADD COLUMN muted_until DATETIME DEFAULT NULL;
+
+INSERT INTO site_settings (setting_key, setting_value) VALUES
+    ('newsletter_enabled', '1')
+ON DUPLICATE KEY UPDATE setting_value = setting_value;

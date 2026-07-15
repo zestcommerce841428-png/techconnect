@@ -35,9 +35,12 @@ require __DIR__ . '/includes/header.php';
     <?php endforeach; ?>
     <form method="post" class="space-y-3">
       <?= csrf_field() ?>
-      <input type="text" name="name" required placeholder="Your name" class="w-full border rounded px-3 py-2">
-      <input type="email" name="email" required placeholder="Your email" class="w-full border rounded px-3 py-2">
-      <textarea name="message" required rows="5" placeholder="Message" class="w-full border rounded px-3 py-2"></textarea>
+      <label for="contact_name" class="sr-only">Your name</label>
+      <input id="contact_name" type="text" name="name" required placeholder="Your name" class="w-full border rounded px-3 py-2">
+      <label for="contact_email" class="sr-only">Your email</label>
+      <input id="contact_email" type="email" name="email" required placeholder="Your email" class="w-full border rounded px-3 py-2">
+      <label for="contact_message" class="sr-only">Message</label>
+      <textarea id="contact_message" name="message" required rows="5" placeholder="Message" class="w-full border rounded px-3 py-2"></textarea>
       <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded">Send</button>
     </form>
   <?php endif; ?>

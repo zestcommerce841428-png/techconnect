@@ -58,6 +58,19 @@ function flash_get(string $key): ?string
     return null;
 }
 
+function setting(string $key, string $default = ''): string
+{
+    static $cache = null;
+    if ($cache === null) {
+        $cache = [];
+        $stmt = db()->query('SELECT setting_key, setting_value FROM site_settings');
+        foreach ($stmt->fetchAll() as $row) {
+            $cache[$row['setting_key']] = $row['setting_value'];
+        }
+    }
+    return ($cache[$key] ?? '') !== '' ? $cache[$key] : $default;
+}
+
 function time_ago(string $datetime): string
 {
     $diff = time() - strtotime($datetime);
@@ -66,4 +79,13 @@ function time_ago(string $datetime): string
     if ($diff < 86400) return floor($diff / 3600) . 'h ago';
     if ($diff < 2592000) return floor($diff / 86400) . 'd ago';
     return date('M j, Y', strtotime($datetime));
+}
+
+require_once __DIR__ . '/currency.php';
+
+function unread_notification_count(int $userId): int
+{
+    $stmt = db()->prepare('SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0');
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetchColumn();
 }

@@ -6,5 +6,24 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'Webauthn\\MetadataService\\' => array($vendorDir . '/web-auth/metadata-service/src'),
+    'Webauthn\\' => array($vendorDir . '/web-auth/webauthn-lib/src'),
+    'Symfony\\Polyfill\\Uuid\\' => array($vendorDir . '/symfony/polyfill-uuid'),
+    'Symfony\\Component\\Uid\\' => array($vendorDir . '/symfony/uid'),
+    'StellaMaris\\Clock\\' => array($vendorDir . '/stella-maris/clock/src'),
+    'SpomkyLabs\\Pki\\' => array($vendorDir . '/spomky-labs/pki-framework/src'),
+    'RobThree\\Auth\\' => array($vendorDir . '/robthree/twofactorauth/lib'),
+    'Psr\\Log\\' => array($vendorDir . '/psr/log/src'),
+    'Psr\\Http\\Message\\' => array($vendorDir . '/psr/http-factory/src', $vendorDir . '/psr/http-message/src'),
+    'Psr\\Http\\Client\\' => array($vendorDir . '/psr/http-client/src'),
+    'Psr\\Clock\\' => array($vendorDir . '/psr/clock/src'),
+    'ParagonIE\\ConstantTime\\' => array($vendorDir . '/paragonie/constant_time_encoding/src'),
     'PHPMailer\\PHPMailer\\' => array($vendorDir . '/phpmailer/phpmailer/src'),
+    'Nyholm\\Psr7\\' => array($vendorDir . '/nyholm/psr7/src'),
+    'Nyholm\\Psr7Server\\' => array($vendorDir . '/nyholm/psr7-server/src'),
+    'Lcobucci\\Clock\\' => array($vendorDir . '/lcobucci/clock/src'),
+    'FG\\' => array($vendorDir . '/fgrosse/phpasn1/lib'),
+    'Cose\\' => array($vendorDir . '/web-auth/cose-lib/src'),
+    'CBOR\\' => array($vendorDir . '/spomky-labs/cbor-php/src'),
+    'Brick\\Math\\' => array($vendorDir . '/brick/math/src'),
 );

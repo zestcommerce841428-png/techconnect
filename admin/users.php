@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/audit.php';
 $pageTitle = 'Users — Admin';
 require __DIR__ . '/includes/admin_header.php';
 
@@ -11,13 +12,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($admin['role'] === 'admin' && $_POST['action'] === 'set_role') {
         $role = in_array($_POST['role'], ['user', 'moderator', 'admin'], true) ? $_POST['role'] : 'user';
         $pdo->prepare('UPDATE users SET role = ? WHERE id = ?')->execute([$role, $userId]);
+        audit_log($admin['id'], 'set_role', 'user', $userId, "role={$role}");
         flash_set('success', 'Role updated.');
     } elseif ($_POST['action'] === 'ban') {
         // Soft-ban by clearing password hash so login is impossible until reset by admin
         $pdo->prepare("UPDATE users SET password_hash = CONCAT('!banned:', password_hash) WHERE id = ?")->execute([$userId]);
+        audit_log($admin['id'], 'ban_user', 'user', $userId);
         flash_set('success', 'User banned.');
     }
-    redirect('/admin/users.php');
+    redirect('/admin/users');
 }
 
 $search = trim($_GET['q'] ?? '');
@@ -42,7 +45,7 @@ $users = $stmt->fetchAll();
     <tbody>
       <?php foreach ($users as $u): ?>
         <tr class="border-t">
-          <td class="p-3"><a href="/profile.php?u=<?= $u['id'] ?>" class="text-indigo-600 hover:underline"><?= e($u['username']) ?></a></td>
+          <td class="p-3"><a href="/profile?u=<?= $u['id'] ?>" class="text-indigo-600 hover:underline"><?= e($u['username']) ?></a></td>
           <td class="p-3"><?= e($u['email']) ?></td>
           <td class="p-3"><?= e($u['role']) ?></td>
           <td class="p-3"><?= (int) $u['reputation'] ?></td>
