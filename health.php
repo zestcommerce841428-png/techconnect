@@ -1,7 +1,17 @@
 <?php
 // Lightweight health check for uptime monitors: verifies PHP + DB connectivity.
 // Returns 200 {"status":"ok"} or 503 {"status":"degraded"}. No auth/session needed.
+// Browsers get redirected to the human-friendly /status page; anything that
+// asks for JSON explicitly (uptime monitors, curl, ?format=json) gets JSON.
 define('SKIP_IP_BLOCK_CHECK', true);
+
+$wantsJson = isset($_GET['format']) && $_GET['format'] === 'json';
+$accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+if (!$wantsJson && str_contains($accept, 'text/html')) {
+    header('Location: /status');
+    exit;
+}
+
 header('Content-Type: application/json');
 header('Cache-Control: no-store');
 

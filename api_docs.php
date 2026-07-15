@@ -17,28 +17,72 @@ require __DIR__ . '/includes/header.php';
 
   <div class="space-y-6">
     <?php
-    $endpoints = [
-      ['GET', '/api/v1/questions.php?page=1&tag=php&category=technology', 'List recent questions, optionally filtered by tag or category.'],
-      ['GET', '/api/v1/question.php?slug=your-question-slug', 'Fetch a single question with its answers.'],
-      ['POST', '/api/v1/ask.php', 'Create a question. Requires API key. Body: title, body, category, tags (comma-separated).'],
-      ['GET', '/api/v1/tags.php', 'List the top 100 tags by usage.'],
-      ['GET', '/api/v1/categories.php', 'List active categories.'],
-      ['GET', '/api/v1/users.php?username=someone', 'Fetch a public profile summary.'],
-      ['GET', '/api/v1/search.php?q=keyword', 'Full-text search across questions.'],
-      ['GET', '/api/v1/me.php', 'Confirm your API key is valid and see which account it belongs to.'],
+    $groups = [
+      'Q&A' => [
+        ['GET', '/api/v1/questions.php?page=1&tag=php&category=technology', 'List recent questions, optionally filtered by tag or category.'],
+        ['GET', '/api/v1/question.php?slug=your-question-slug', 'Fetch a single question with its answers.'],
+        ['POST', '/api/v1/ask.php', 'Create a question. Requires API key. Body: title, body, category, tags (comma-separated).'],
+        ['GET', '/api/v1/answers.php?slug=your-question-slug', "List a question's answers."],
+        ['POST', '/api/v1/answer.php', 'Post an answer. Requires API key. Body: slug, body.'],
+        ['GET', '/api/v1/comments.php?parent_type=question&parent_id=1', 'List comments on a question or answer.'],
+        ['POST', '/api/v1/comment.php', 'Post a comment. Requires API key. Body: parent_type (question|answer), parent_id, body.'],
+        ['POST', '/api/v1/vote.php', 'Upvote/downvote a question or answer (toggles on repeat). Requires API key. Body: votable_type, votable_id, value (1 or -1).'],
+        ['POST', '/api/v1/save_question.php', 'Bookmark/unbookmark a question (toggle). Requires API key. Body: slug.'],
+      ],
+      'Discovery & taxonomy' => [
+        ['GET', '/api/v1/tags.php', 'List the top 100 tags by usage.'],
+        ['GET', '/api/v1/categories.php', 'List active categories.'],
+        ['GET', '/api/v1/search.php?q=keyword', 'Full-text search across questions.'],
+        ['GET', '/api/v1/leaderboard.php', 'Top 50 users by reputation.'],
+        ['GET', '/api/v1/roadmap.php', 'Public roadmap items and their vote counts.'],
+        ['GET', '/api/v1/changelog.php', 'Published changelog entries.'],
+        ['GET', '/api/v1/testimonials.php', 'Published testimonials.'],
+        ['GET', '/api/v1/currencies.php', 'Supported currencies and exchange rates.'],
+      ],
+      'People' => [
+        ['GET', '/api/v1/users.php?username=someone', 'Fetch a public profile summary.'],
+        ['GET', '/api/v1/me.php', 'Confirm your API key is valid and see which account it belongs to.'],
+        ['GET', '/api/v1/reputation.php?username=someone', "A user's reputation event history."],
+        ['GET', '/api/v1/badges.php', 'The full badge catalog.'],
+        ['GET', '/api/v1/user_badges.php?username=someone', 'Badges a specific user has earned.'],
+        ['POST', '/api/v1/follow.php', 'Follow a user or tag. Requires API key. Body: followable_type (user|tag), followable.'],
+        ['POST', '/api/v1/unfollow.php', 'Unfollow a user or tag. Requires API key. Same body as follow.'],
+        ['GET', '/api/v1/notifications.php', 'Your own notifications. Requires API key.'],
+      ],
+      'Groups, jobs & experts' => [
+        ['GET', '/api/v1/groups.php', 'List public groups.'],
+        ['GET', '/api/v1/group.php?slug=group-slug', 'Fetch a single public group.'],
+        ['GET', '/api/v1/jobs.php', 'List active job listings.'],
+        ['GET', '/api/v1/job.php?slug=job-slug', 'Fetch a single job listing.'],
+        ['GET', '/api/v1/experts.php', 'List approved experts.'],
+        ['GET', '/api/v1/expert.php?username=someone', "Fetch a single expert's profile."],
+      ],
+      'Content & collections' => [
+        ['GET', '/api/v1/blog_posts.php?page=1', 'List published blog posts.'],
+        ['GET', '/api/v1/blog_post.php?slug=post-slug', 'Fetch a single published blog post.'],
+        ['GET', '/api/v1/collections.php?username=someone', "A user's public collections."],
+        ['GET', '/api/v1/collection.php?username=someone&slug=collection-slug', 'A single public collection and its questions.'],
+      ],
     ];
-    foreach ($endpoints as [$method, $path, $desc]): ?>
-      <div class="card p-4">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-xs font-mono font-bold px-2 py-0.5 rounded <?= $method === 'GET' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700' ?>"><?= $method ?></span>
-          <code class="text-sm"><?= e($path) ?></code>
+    foreach ($groups as $groupName => $endpoints): ?>
+      <h2 class="text-base font-semibold mt-6 mb-2"><?= e($groupName) ?></h2>
+      <?php foreach ($endpoints as [$method, $path, $desc]): ?>
+        <div class="card p-4 mb-2">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded <?= $method === 'GET' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700' ?>"><?= $method ?></span>
+            <code class="text-sm"><?= e($path) ?></code>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-400"><?= e($desc) ?></p>
         </div>
-        <p class="text-sm text-slate-600 dark:text-slate-400"><?= e($desc) ?></p>
-      </div>
+      <?php endforeach; ?>
     <?php endforeach; ?>
   </div>
 
   <h2 class="text-lg font-semibold mt-8 mb-2">Rate limits</h2>
-  <p class="text-sm text-slate-600 dark:text-slate-400">Write endpoints are limited to 20 requests/hour per API key. Read endpoints are unauthenticated and rate-limited by IP at the web server level.</p>
+  <p class="text-sm text-slate-600 dark:text-slate-400">
+    Write endpoints are limited per API key, typically 20-60 requests/hour depending on the endpoint. A 429 response with
+    <code class="bg-slate-100 dark:bg-slate-800 px-1 rounded text-xs">{"error":"Rate limit exceeded"}</code> means back off and retry later.
+    Read endpoints need no API key and are rate-limited by IP at 120 requests/minute.
+  </p>
 </div>
 <?php require __DIR__ . '/includes/footer.php'; ?>
