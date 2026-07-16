@@ -18,6 +18,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('/admin/categories');
     }
 
+    // Bulk activation controls — with a 700-category catalog these beat row-by-row toggling.
+    if ($action === 'bulk') {
+        $mode = $_POST['bulk_mode'] ?? '';
+        if ($mode === 'activate_all') {
+            $n = $pdo->exec('UPDATE categories SET is_active = 1 WHERE is_active = 0');
+            flash_set('success', "Activated $n categories.");
+        } elseif ($mode === 'deactivate_all') {
+            $n = $pdo->exec('UPDATE categories SET is_active = 0 WHERE is_active = 1');
+            flash_set('success', "Deactivated $n categories.");
+        } elseif ($mode === 'activate_core') {
+            // Core = the broad starter set (sort_order < 100).
+            $n = $pdo->exec('UPDATE categories SET is_active = (sort_order < 100)');
+            flash_set('success', 'Only the core categories are now active (' . (int) $pdo->query('SELECT COUNT(*) FROM categories WHERE is_active = 1')->fetchColumn() . ' active).');
+        } elseif ($mode === 'activate_used') {
+            $n = $pdo->exec('UPDATE categories SET is_active = (sort_order < 100 OR id IN (SELECT DISTINCT category_id FROM questions WHERE category_id IS NOT NULL))');
+            flash_set('success', 'Active set = core + any category that has questions.');
+        }
+        redirect('/admin/categories');
+    }
+
     $id = (int) ($_POST['id'] ?? 0);
     $name = trim($_POST['name'] ?? '');
     $description = trim($_POST['description'] ?? '');
@@ -46,6 +66,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $categories = $pdo->query('SELECT * FROM categories ORDER BY sort_order ASC, name ASC')->fetchAll();
 ?>
 <h1 class="text-2xl font-bold mb-4">Categories</h1>
+
+<div class="bg-white border rounded-lg p-4 mb-4">
+  <h2 class="font-semibold mb-1 text-sm">Bulk visibility</h2>
+  <p class="text-xs text-slate-500 mb-3">Control how much of the catalog is publicly visible. Inactive categories stay in the database and can be re-enabled anytime; empty public category pages hurt SEO, so keep the visible set close to where real questions are.</p>
+  <form method="post" class="flex flex-wrap gap-2">
+    <?= csrf_field() ?>
+    <input type="hidden" name="action" value="bulk">
+    <button name="bulk_mode" value="activate_core" class="text-xs px-3 py-1.5 rounded border bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100" onclick="return confirm('Show only the ~8 core categories publicly?')">Core only (recommended at launch)</button>
+    <button name="bulk_mode" value="activate_used" class="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-100" onclick="return confirm('Show core categories plus any category that already has questions?')">Core + categories with questions</button>
+    <button name="bulk_mode" value="activate_all" class="text-xs px-3 py-1.5 rounded border bg-white hover:bg-slate-100" onclick="return confirm('Make ALL categories publicly visible?')">Activate all</button>
+    <button name="bulk_mode" value="deactivate_all" class="text-xs px-3 py-1.5 rounded border bg-white text-red-600 hover:bg-red-50" onclick="return confirm('Hide ALL categories from the public site?')">Deactivate all</button>
+  </form>
+</div>
 <div class="bg-white border rounded-lg p-4 mb-6">
   <h2 class="font-semibold mb-3 text-sm">Add category</h2>
   <form method="post" class="grid grid-cols-2 md:grid-cols-6 gap-2 items-end">

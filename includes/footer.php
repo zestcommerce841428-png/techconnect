@@ -92,6 +92,35 @@ $tawkWidgetId = setting('tawk_widget_id');
 </script>
 <?php endif; ?>
 
+<button type="button" id="back-to-top" aria-label="Back to top"
+        class="hidden fixed bottom-5 left-5 z-40 w-11 h-11 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white text-lg shadow-lg backdrop-blur">↑</button>
+
+<div id="cookie-consent" class="hidden fixed bottom-0 inset-x-0 z-50 bg-slate-900 text-slate-200 text-sm">
+  <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+    <span>We use cookies for login sessions and to improve <?= e($siteName ?? SITE_NAME) ?>. See our <a href="/cookies" class="underline">cookie policy</a>.</span>
+    <button type="button" id="cookie-consent-ok" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium">Got it</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var top = document.getElementById('back-to-top');
+  window.addEventListener('scroll', function () {
+    top.classList.toggle('hidden', window.scrollY < 600);
+  }, { passive: true });
+  top.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+
+  var consent = document.getElementById('cookie-consent');
+  try {
+    if (!localStorage.getItem('cookie_consent')) consent.classList.remove('hidden');
+    document.getElementById('cookie-consent-ok').addEventListener('click', function () {
+      localStorage.setItem('cookie_consent', '1');
+      consent.classList.add('hidden');
+    });
+  } catch (e) { /* private mode without storage — leave banner hidden */ }
+})();
+</script>
+
 <script src="/assets/dist/js/theme.js"></script>
 <script src="/assets/dist/js/ui.js"></script>
 <script src="/assets/dist/js/search_suggest.js"></script>

@@ -94,7 +94,36 @@ require __DIR__ . '/includes/header.php';
     <div>
       <label for="reg_password" class="block text-sm font-medium mb-1">Password</label>
       <input id="reg_password" type="password" name="password" required minlength="8" aria-describedby="reg_password_hint" class="w-full border rounded-lg px-3 py-2.5">
-      <p id="reg_password_hint" class="text-xs text-slate-400 mt-1">At least 8 characters.</p>
+      <div class="h-1.5 mt-1.5 rounded bg-slate-200 overflow-hidden" aria-hidden="true">
+        <div id="reg_pw_bar" class="h-full w-0 rounded transition-all"></div>
+      </div>
+      <p id="reg_password_hint" class="text-xs text-slate-400 mt-1" aria-live="polite">At least 8 characters.</p>
+      <script>
+      (function () {
+        var pw = document.getElementById('reg_password'), bar = document.getElementById('reg_pw_bar'), hint = document.getElementById('reg_password_hint');
+        var levels = [
+          [0, '#ef4444', 'Too weak — add more characters.'],
+          [30, '#ef4444', 'Weak — mix letters, numbers and symbols.'],
+          [55, '#f59e0b', 'Okay — longer is stronger.'],
+          [80, '#22c55e', 'Strong password.'],
+          [100, '#16a34a', 'Very strong password.']
+        ];
+        pw.addEventListener('input', function () {
+          var v = pw.value, score = 0;
+          score += Math.min(40, v.length * 4);
+          if (/[a-z]/.test(v) && /[A-Z]/.test(v)) score += 15;
+          if (/\d/.test(v)) score += 15;
+          if (/[^A-Za-z0-9]/.test(v)) score += 20;
+          if (v.length >= 14) score += 10;
+          if (/^(.)\1+$/.test(v) || /^(0123|1234|abcd|qwer|pass|admin)/i.test(v)) score = Math.min(score, 20);
+          var lvl = levels[0];
+          levels.forEach(function (l) { if (score >= l[0]) lvl = l; });
+          bar.style.width = Math.min(100, score) + '%';
+          bar.style.background = lvl[1];
+          hint.textContent = v ? lvl[2] : 'At least 8 characters.';
+        });
+      })();
+      </script>
     </div>
     <?= captcha_field('register') ?>
     <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg px-3 py-2.5">Create account</button>

@@ -31,6 +31,9 @@ function minify_html_output(string $html): string
 
     $html = preg_replace('/<!--(?!\[if|<!\[endif)(?!\s*ko).*?-->/s', '', $html) ?? $html;
     $html = preg_replace('/\s+/', ' ', $html) ?? $html;
+    // Native lazy-loading for images that don't declare their own strategy —
+    // big win on question pages full of user-uploaded screenshots.
+    $html = preg_replace('/<img (?![^>]*\bloading=)/i', '<img loading="lazy" decoding="async" ', $html) ?? $html;
 
     return trim(strtr($html, $protected));
 }
