@@ -115,6 +115,13 @@ require __DIR__ . '/includes/header.php';
               🏆 You won a +<?= (int) ($data['points'] ?? 0) ?> reputation bounty on <a href="/q/<?= e($data['question_slug'] ?? '') ?>" class="text-indigo-600 hover:underline"><?= e($data['question_title'] ?? '') ?></a>
             <?php elseif ($n['type'] === 'bounty_refunded'): ?>
               Your +<?= (int) ($data['points'] ?? 0) ?> reputation bounty on <a href="/q/<?= e($data['question_slug'] ?? '') ?>" class="text-indigo-600 hover:underline"><?= e($data['question_title'] ?? '') ?></a> expired with no answers and was refunded
+            <?php elseif ($n['type'] === 'feedback_update'): ?>
+              <?= ($data['status'] ?? '') === 'resolved' ? '✅' : (($data['status'] ?? '') === 'planned' ? '🗓️' : 'ℹ️') ?>
+              Your feedback &ldquo;<?= e($data['subject'] ?? '') ?>&rdquo; was marked
+              <strong><?= e(str_replace('_', ' ', $data['status'] ?? '')) ?></strong> —
+              <a href="/feedback" class="text-indigo-600 hover:underline">see the team's response</a>
+            <?php elseif ($n['type'] === 'welcome'): ?>
+              👋 Welcome to <?= e(SITE_NAME) ?>! Start by <a href="/ask" class="text-indigo-600 hover:underline">asking your first question</a> or <a href="/categories" class="text-indigo-600 hover:underline">exploring topics</a>.
             <?php else: ?>
               <?= e($n['type']) ?>
             <?php endif; ?>

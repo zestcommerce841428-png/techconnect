@@ -67,6 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         require_once __DIR__ . '/includes/webhooks.php';
         fire_webhook('user.registered', ['id' => $newUserId, 'username' => $username]);
 
+        db()->prepare('INSERT INTO notifications (user_id, type, data) VALUES (?, "welcome", JSON_OBJECT())')
+            ->execute([$newUserId]);
+
         flash_set('success', 'Welcome to ' . SITE_NAME . '! We sent a verification link to your email.');
         redirect('/index.php');
     }

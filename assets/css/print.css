@@ -1,0 +1,41 @@
+/* Print stylesheet: strip chrome so a printed/PDF'd question reads like a document. */
+header, footer, nav, aside,
+button, form,
+#back-to-top, #cookie-consent,
+[data-vote], [data-mobile-nav], .no-print,
+a[aria-label="Chat on WhatsApp"] {
+  display: none !important;
+}
+body {
+  background: #fff !important;
+  color: #000 !important;
+  font-size: 11pt;
+}
+main {
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+a {
+  color: #000 !important;
+  text-decoration: underline;
+}
+/* Show the target of important links so paper readers can follow them. */
+main a[href^="http"]::after {
+  content: " (" attr(href) ")";
+  font-size: 8pt;
+  color: #444;
+}
+pre, code {
+  border: 1px solid #ccc;
+  background: #f8f8f8 !important;
+  color: #000 !important;
+  page-break-inside: avoid;
+}
+.bg-white, .card, [class*="bg-slate"] {
+  background: #fff !important;
+  box-shadow: none !important;
+}
+img {
+  max-width: 100% !important;
+  page-break-inside: avoid;
+}

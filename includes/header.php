@@ -51,6 +51,7 @@ $ogImagePath = $ogImage ?? SITE_URL . '/assets/images/og-image.png';
 <link rel="alternate" type="application/rss+xml" title="<?= e($siteName) ?> — Latest questions" href="<?= e(SITE_URL) ?>/rss">
 <link rel="alternate" type="application/rss+xml" title="<?= e($siteName) ?> Blog" href="<?= e(SITE_URL) ?>/rss?feed=blog">
 <link rel="stylesheet" href="/assets/css/tailwind.min.css">
+<link rel="stylesheet" href="/assets/css/print.css" media="print">
 <script>
   // Inline (not deferred) so the theme class is set before first paint — avoids a flash of the wrong theme.
   (function () {

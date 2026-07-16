@@ -16,8 +16,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'update' && $id) {
         $status = in_array($_POST['status'] ?? '', $statuses, true) ? $_POST['status'] : 'new';
         $note = trim($_POST['admin_note'] ?? '');
+        $prev = $pdo->prepare('SELECT user_id, status, subject FROM feedback WHERE id = ?');
+        $prev->execute([$id]);
+        $prevRow = $prev->fetch();
         $pdo->prepare('UPDATE feedback SET status = ?, admin_note = ?, handled_by = ? WHERE id = ?')
             ->execute([$status, $note !== '' ? $note : null, $admin['id'], $id]);
+        // Close the loop: tell the reporter when their feedback reaches an outcome state.
+        if ($prevRow && $prevRow['user_id'] && $prevRow['status'] !== $status
+            && in_array($status, ['planned', 'resolved', 'dismissed'], true)) {
+            $pdo->prepare('INSERT INTO notifications (user_id, type, data) VALUES (?, "feedback_update", JSON_OBJECT("subject", ?, "status", ?))')
+                ->execute([$prevRow['user_id'], mb_substr($prevRow['subject'], 0, 120), $status]);
+        }
         audit_log($admin['id'], 'feedback_updated', 'feedback', $id, $status);
         flash_set('success', 'Feedback #' . $id . ' updated.');
     } elseif ($action === 'delete' && $id) {
