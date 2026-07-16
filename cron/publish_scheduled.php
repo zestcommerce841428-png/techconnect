@@ -7,9 +7,10 @@ if (php_sapi_name() !== 'cli') {
 }
 
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/functions.php'; // sd_filter()
 
 $pdo = db();
-$due = $pdo->query("SELECT id, title FROM blog_posts WHERE status = 'draft' AND publish_at IS NOT NULL AND publish_at <= NOW()")->fetchAll();
+$due = $pdo->query("SELECT id, title FROM blog_posts WHERE status = 'draft' AND publish_at IS NOT NULL AND publish_at <= NOW()" . sd_filter())->fetchAll();
 
 foreach ($due as $post) {
     $pdo->prepare("UPDATE blog_posts SET status = 'published', published_at = publish_at, publish_at = NULL WHERE id = ?")

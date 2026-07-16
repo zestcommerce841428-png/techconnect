@@ -51,6 +51,7 @@ $badgeJobs = $navBadge("SELECT COUNT(*) FROM jobs WHERE status = 'pending'");
     <a href="/admin/uploads" class="block px-2 py-1.5 rounded hover:bg-slate-800">Uploads</a>
     <a href="/admin/pages" class="block px-2 py-1.5 rounded hover:bg-slate-800">Pages</a>
     <a href="/admin/blog" class="block px-2 py-1.5 rounded hover:bg-slate-800">Blog</a>
+    <a href="/admin/trash" class="block px-2 py-1.5 rounded hover:bg-slate-800">🗑️ Trash</a>
     <a href="/admin/categories" class="block px-2 py-1.5 rounded hover:bg-slate-800">Categories</a>
     <a href="/admin/tags" class="block px-2 py-1.5 rounded hover:bg-slate-800">Tags</a>
     <a href="/admin/announcements" class="block px-2 py-1.5 rounded hover:bg-slate-800">Announcements</a>

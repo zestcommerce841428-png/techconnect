@@ -58,6 +58,38 @@ function flash_get(string $key): ?string
     return null;
 }
 
+/**
+ * True once migration 031 has added the soft-delete columns.
+ *
+ * Every public read filters trashed content, but those queries would be fatal
+ * on a server where 031 has not been applied yet — and includes/footer.php runs
+ * on every page, so that would take the whole site down mid-deploy. This lets
+ * the code be deployed before or after the migration, in either order.
+ * Result is cached per request (one cheap `LIMIT 0` probe at most).
+ *
+ * Safe to delete this helper, and inline the filter, once 031 is applied.
+ */
+function soft_deletes_ready(): bool
+{
+    static $ready = null;
+    if ($ready === null) {
+        try {
+            db()->query('SELECT deleted_at FROM pages LIMIT 0');
+            $ready = true;
+        } catch (Throwable $e) {
+            $ready = false;
+        }
+    }
+    return $ready;
+}
+
+/** SQL fragment filtering out trashed rows, or '' pre-migration. */
+function sd_filter(string $alias = ''): string
+{
+    if (!soft_deletes_ready()) return '';
+    return ' AND ' . ($alias !== '' ? $alias . '.' : '') . 'deleted_at IS NULL';
+}
+
 function setting(string $key, string $default = ''): string
 {
     static $cache = null;

@@ -9,7 +9,7 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/markdown.php';
 
 $pdo = db();
-$stmt = $pdo->prepare('SELECT * FROM pages WHERE slug = ? AND is_published = 1');
+$stmt = $pdo->prepare('SELECT * FROM pages WHERE slug = ? AND is_published = 1' . sd_filter());
 $stmt->execute([$cmsSlug]);
 $page = $stmt->fetch();
 

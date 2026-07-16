@@ -5,7 +5,7 @@ require_once __DIR__ . '/includes/markdown.php';
 $pdo = db();
 $slug = $_GET['slug'] ?? '';
 
-$stmt = $pdo->prepare('SELECT * FROM pages WHERE slug = ? AND is_published = 1');
+$stmt = $pdo->prepare('SELECT * FROM pages WHERE slug = ? AND is_published = 1' . sd_filter());
 $stmt->execute([$slug]);
 $page = $stmt->fetch();
 

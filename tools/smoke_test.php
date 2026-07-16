@@ -47,6 +47,7 @@ $routes = [
     '/status' => [200],
     '/rss' => [200],
     '/sitemap.xml' => [200],
+    '/admin/trash' => [302],
     '/robots.txt' => [200],
     '/manifest.json' => [200],
     '/offline.html' => [200],

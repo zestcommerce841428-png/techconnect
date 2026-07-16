@@ -13,7 +13,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'delete') {
-        $pdo->prepare('DELETE FROM blog_posts WHERE id = ?')->execute([(int) $_POST['id']]);
+        require_once __DIR__ . '/../includes/audit.php';
+        $id = (int) $_POST['id'];
+        if (soft_deletes_ready()) {
+            // Soft delete: move to Trash, recoverable from /admin/trash.
+            $pdo->prepare('UPDATE blog_posts SET deleted_at = NOW(), deleted_by = ? WHERE id = ? AND deleted_at IS NULL')
+                ->execute([$admin['id'], $id]);
+            audit_log($admin['id'], 'blog_post_trashed', 'blog_post', $id);
+            flash_set('success', 'Post moved to Trash — restore it any time from Trash.');
+            redirect('/admin/trash?from=blog');
+        }
+        // Pre-migration 031: keep the original hard-delete behaviour rather than
+        // erroring on a column that does not exist yet.
+        $pdo->prepare('DELETE FROM blog_posts WHERE id = ?')->execute([$id]);
+        audit_log($admin['id'], 'blog_post_deleted', 'blog_post', $id);
         flash_set('success', 'Post deleted.');
         redirect('/admin/blog');
     }
@@ -68,7 +81,7 @@ if ($editId) {
 
 $blogCategories = $pdo->query('SELECT id, name FROM blog_categories ORDER BY name')->fetchAll();
 $posts = $pdo->query(
-    'SELECT p.id, p.title, p.slug, p.status, p.published_at, p.publish_at, u.username FROM blog_posts p JOIN users u ON u.id = p.author_id ORDER BY p.created_at DESC LIMIT 50'
+    'SELECT p.id, p.title, p.slug, p.status, p.published_at, p.publish_at, u.username FROM blog_posts p JOIN users u ON u.id = p.author_id WHERE 1=1' . sd_filter('p') . ' ORDER BY p.created_at DESC LIMIT 50'
 )->fetchAll();
 ?>
 <h1 class="text-2xl font-bold mb-4">Blog</h1>

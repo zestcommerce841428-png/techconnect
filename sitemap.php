@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/functions.php'; // sd_filter()
 
 header('Content-Type: application/xml; charset=utf-8');
 
@@ -14,8 +15,8 @@ $categories = $pdo->query(
      WHERE c.is_active = 1
      GROUP BY c.id"
 )->fetchAll();
-$pages = $pdo->query('SELECT slug, updated_at FROM pages WHERE is_published = 1')->fetchAll();
-$blogPosts = $pdo->query("SELECT slug, updated_at FROM blog_posts WHERE status = 'published'")->fetchAll();
+$pages = $pdo->query('SELECT slug, updated_at FROM pages WHERE is_published = 1' . sd_filter())->fetchAll();
+$blogPosts = $pdo->query("SELECT slug, updated_at FROM blog_posts WHERE status = 'published'" . sd_filter())->fetchAll();
 
 echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";

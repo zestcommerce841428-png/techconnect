@@ -9,7 +9,7 @@ $stmt = $pdo->prepare(
     "SELECT p.*, u.username, bc.name AS category_name
      FROM blog_posts p JOIN users u ON u.id = p.author_id
      LEFT JOIN blog_categories bc ON bc.id = p.blog_category_id
-     WHERE p.slug = ? AND p.status = 'published'"
+     WHERE p.slug = ? AND p.status = 'published'" . sd_filter('p') . ""
 );
 $stmt->execute([$slug]);
 $post = $stmt->fetch();

@@ -14,10 +14,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'delete') {
-        $pdo->prepare('DELETE FROM pages WHERE id = ?')->execute([(int) $_POST['id']]);
+        require_once __DIR__ . '/../includes/audit.php';
+        $pid = (int) $_POST['id'];
+        if (soft_deletes_ready()) {
+            // Soft delete: move to Trash, recoverable from /admin/trash.
+            $pdo->prepare('UPDATE pages SET deleted_at = NOW(), deleted_by = ? WHERE id = ? AND deleted_at IS NULL')
+                ->execute([$admin['id'], $pid]);
+            audit_log($admin['id'], 'page_trashed', 'page', $pid);
+            flash_set('success', 'Page moved to Trash — restore it any time from Trash.');
+            redirect('/admin/trash?from=pages');
+        }
+        // Pre-migration 031: keep the original hard-delete behaviour rather than
+        // erroring on a column that does not exist yet.
+        $pdo->prepare('DELETE FROM pages WHERE id = ?')->execute([$pid]);
+        audit_log($admin['id'], 'page_deleted', 'page', $pid);
         flash_set('success', 'Page deleted.');
         redirect('/admin/pages');
     }
+
 
     $id = (int) ($_POST['id'] ?? 0);
     $title = trim($_POST['title'] ?? '');
@@ -52,7 +66,7 @@ if ($editId) {
     $editing = $stmt->fetch();
 }
 
-$pages = $pdo->query('SELECT id, slug, title, is_published, show_in_footer, updated_at FROM pages ORDER BY title ASC')->fetchAll();
+$pages = $pdo->query('SELECT id, slug, title, is_published, show_in_footer, updated_at FROM pages WHERE 1=1' . sd_filter() . ' ORDER BY title ASC')->fetchAll();
 ?>
 <h1 class="text-2xl font-bold mb-4">CMS Pages</h1>
 

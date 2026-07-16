@@ -11,7 +11,7 @@ $posts = $pdo->prepare(
      FROM blog_posts p
      JOIN users u ON u.id = p.author_id
      LEFT JOIN blog_categories bc ON bc.id = p.blog_category_id
-     WHERE p.status = 'published' AND p.published_at <= NOW()
+     WHERE p.status = 'published' AND p.published_at <= NOW()" . sd_filter('p') . "
      ORDER BY p.published_at DESC
      LIMIT $perPage OFFSET $offset"
 );

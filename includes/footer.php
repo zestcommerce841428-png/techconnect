@@ -1,5 +1,5 @@
 <?php
-$footerPages = db()->query('SELECT slug, title FROM pages WHERE is_published = 1 AND show_in_footer = 1 ORDER BY title')->fetchAll();
+$footerPages = db()->query('SELECT slug, title FROM pages WHERE is_published = 1 AND show_in_footer = 1' . sd_filter() . ' ORDER BY title')->fetchAll();
 $socialLinks = [
     'Twitter' => setting('social_twitter'),
     'Facebook' => setting('social_facebook'),

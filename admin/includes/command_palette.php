@@ -22,6 +22,7 @@ $paletteItems = [
     ['Uploads', '/admin/uploads', 'media files images', false],
     ['Pages', '/admin/pages', 'cms content static', false],
     ['Blog', '/admin/blog', 'posts articles writing', false],
+    ['Trash', '/admin/trash', 'deleted restore recover undo bin', false],
     ['Categories', '/admin/categories', 'topics taxonomy', false],
     ['Tags', '/admin/tags', 'labels taxonomy', false],
     ['Announcements', '/admin/announcements', 'banner notice broadcast', false],
