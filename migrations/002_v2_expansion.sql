@@ -1,0 +1,40 @@
+-- TechConnect v2 Phase 1: uploads, edit history
+SET NAMES utf8mb4;
+
+CREATE TABLE uploads (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    path VARCHAR(255) NOT NULL,
+    original_name VARCHAR(255) NOT NULL,
+    mime VARCHAR(100) NOT NULL,
+    size INT UNSIGNED NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE question_revisions (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    question_id INT UNSIGNED NOT NULL,
+    editor_id INT UNSIGNED NOT NULL,
+    prior_title VARCHAR(200) NOT NULL,
+    prior_body MEDIUMTEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE,
+    FOREIGN KEY (editor_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX (question_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE answer_revisions (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    answer_id INT UNSIGNED NOT NULL,
+    editor_id INT UNSIGNED NOT NULL,
+    prior_body MEDIUMTEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (answer_id) REFERENCES answers(id) ON DELETE CASCADE,
+    FOREIGN KEY (editor_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX (answer_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE questions ADD COLUMN last_edited_at DATETIME DEFAULT NULL AFTER updated_at;
+ALTER TABLE answers ADD COLUMN last_edited_at DATETIME DEFAULT NULL AFTER updated_at;

@@ -1,0 +1,7 @@
+# Defense in depth: uploaded files are validated by MIME sniffing on upload,
+# but never allow this directory to execute scripts even if that check is ever bypassed.
+<FilesMatch "\.(php|php\d|phtml|pl|py|cgi|asp|aspx|sh|exe)$">
+  Require all denied
+</FilesMatch>
+Options -ExecCGI
+php_flag engine off

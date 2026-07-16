@@ -1,0 +1,201 @@
+# TechConnect — clean URLs + baseline security/perf headers (Hostinger/Apache)
+Options -Indexes -MultiViews
+ServerSignature Off
+
+# Baseline security headers. HSTS is deliberately short (1 day) to start —
+# raise max-age once HTTPS is confirmed stable everywhere.
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    Header always set Strict-Transport-Security "max-age=86400" env=HTTPS
+</IfModule>
+
+# Long-lived caching for fingerprintable static assets; HTML/PHP is never cached.
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 7 days"
+    ExpiresByType application/javascript "access plus 7 days"
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/gif "access plus 30 days"
+    ExpiresByType image/webp "access plus 30 days"
+    ExpiresByType image/svg+xml "access plus 30 days"
+    ExpiresByType font/woff2 "access plus 365 days"
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Canonicalize: redirect literal ".php" GET requests to the extensionless URL.
+    # GET only — a redirect on POST drops the form body, which would silently
+    # break every form that submits to a *.php action.
+    #
+    # The query string is intentionally NOT captured into the RewriteCond
+    # backreference and re-inserted manually — Apache percent-encodes "?" when
+    # a backreference containing it is substituted into a RewriteRule target,
+    # so ".../foo.php?bar=1" became ".../foo%3Fbar=1" with the *original*
+    # query string then appended a second time (Apache auto-appends the query
+    # string whenever the substitution has no literal, unescaped "?" of its
+    # own), producing broken double-encoded URLs like "/foo%3Fbar=1?bar=1" on
+    # any .php request that carried query parameters. QSA lets Apache append
+    # the real query string itself instead, which handles it correctly.
+    RewriteCond %{REQUEST_METHOD} =GET
+    RewriteCond %{THE_REQUEST} \s([^.]+)\.php[\s?] [NC]
+    RewriteRule ^ %1 [R=301,L,QSA]
+
+    # Pretty routes for slugged content
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^q/([a-zA-Z0-9-]+)/?$ question.php?slug=$1 [L,QSA]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^blog/([a-zA-Z0-9-]+)/?$ blog_post.php?slug=$1 [L,QSA]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^page/([a-zA-Z0-9-]+)/?$ page.php?slug=$1 [L,QSA]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^c/([a-zA-Z0-9-]+)/?$ questions.php?category=$1 [L,QSA]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^tag/([a-zA-Z0-9-]+)/?$ questions.php?tag=$1 [L,QSA]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^u/([a-zA-Z0-9_-]+)/?$ profile.php?username=$1 [L,QSA]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^u/([a-zA-Z0-9_-]+)/([a-zA-Z0-9-]+)/?$ collection.php?username=$1&slug=$2 [L,QSA]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^sitemap\.xml/?$ sitemap.php [L,QSA]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^manifest\.json/?$ manifest.php [L,QSA]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^g/([a-zA-Z0-9-]+)/?$ group.php?slug=$1 [L,QSA]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^go/([a-zA-Z0-9]+)/?$ go.php?slug=$1 [L,QSA]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^checkout/success/?$ checkout_success.php [L,QSA]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^checkout/cancel/?$ checkout_cancel.php [L,QSA]
+
+    # Generic fallback: allow any page to be requested without ".php"
+    # (e.g. /login resolves to login.php) as long as no real file/dir matches.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME}\.php -f
+    RewriteRule ^(.*)$ $1.php [L,QSA]
+
+    RewriteRule ^includes/ - [F,L]
+    RewriteRule ^logs/ - [F,L]
+    RewriteRule ^migrations/ - [F,L]
+    RewriteRule ^cron/ - [F,L]
+    RewriteRule ^backups/ - [F,L]
+    RewriteRule ^vendor/(?!phpmailer/phpmailer/language) - [F,L]
+</IfModule>
+
+# Never serve raw source/config over HTTP
+<FilesMatch "\.(sql|log|md|lock)$">
+    Require all denied
+</FilesMatch>
+<Files "config.php">
+    Require all denied
+</Files>
+<Files ".env">
+    Require all denied
+</Files>
+<Files "composer.json">
+    Require all denied
+</Files>
+<Files "composer.lock">
+    Require all denied
+</Files>
+<Files "package.json">
+    Require all denied
+</Files>
+<Files "package-lock.json">
+    Require all denied
+</Files>
+
+# Block the .git working copy and node_modules from ever being served —
+# these should not exist on a production host, but deny them defensively
+# in case a manual upload includes them.
+RewriteEngine On
+RewriteRule ^\.git(/|$) - [F,L]
+RewriteRule ^node_modules(/|$) - [F,L]
+
+# Any other dotfile (besides the ones already handled above) — deny by default.
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+ErrorDocument 404 /404.php
+ErrorDocument 500 /500.php
+
+# All other status codes route through error.php, which renders a tailored
+# professional page per code from includes/error_catalog.php (56 codes covered).
+ErrorDocument 400 /error.php
+ErrorDocument 401 /error.php
+ErrorDocument 402 /error.php
+ErrorDocument 403 /error.php
+ErrorDocument 405 /error.php
+ErrorDocument 406 /error.php
+ErrorDocument 407 /error.php
+ErrorDocument 408 /error.php
+ErrorDocument 409 /error.php
+ErrorDocument 410 /error.php
+ErrorDocument 411 /error.php
+ErrorDocument 412 /error.php
+ErrorDocument 413 /error.php
+ErrorDocument 414 /error.php
+ErrorDocument 415 /error.php
+ErrorDocument 416 /error.php
+ErrorDocument 417 /error.php
+ErrorDocument 418 /error.php
+ErrorDocument 419 /error.php
+ErrorDocument 420 /error.php
+ErrorDocument 421 /error.php
+ErrorDocument 422 /error.php
+ErrorDocument 423 /error.php
+ErrorDocument 424 /error.php
+ErrorDocument 425 /error.php
+ErrorDocument 426 /error.php
+ErrorDocument 428 /error.php
+ErrorDocument 429 /error.php
+ErrorDocument 431 /error.php
+ErrorDocument 440 /error.php
+ErrorDocument 444 /error.php
+ErrorDocument 451 /error.php
+ErrorDocument 494 /error.php
+ErrorDocument 499 /error.php
+ErrorDocument 501 /error.php
+ErrorDocument 502 /error.php
+ErrorDocument 503 /error.php
+ErrorDocument 504 /error.php
+ErrorDocument 505 /error.php
+ErrorDocument 506 /error.php
+ErrorDocument 507 /error.php
+ErrorDocument 508 /error.php
+ErrorDocument 510 /error.php
+ErrorDocument 511 /error.php
+ErrorDocument 520 /error.php
+ErrorDocument 521 /error.php
+ErrorDocument 522 /error.php
+ErrorDocument 523 /error.php
+ErrorDocument 524 /error.php
+ErrorDocument 525 /error.php
+ErrorDocument 526 /error.php
+ErrorDocument 527 /error.php
+ErrorDocument 529 /error.php
+ErrorDocument 530 /error.php

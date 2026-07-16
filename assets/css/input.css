@@ -1,0 +1,183 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * ---------- Base layer: site-wide typography & form polish ----------
+ * Most templates use plain utility markup (`border rounded px-3 py-2`),
+ * so styling the raw elements here upgrades every form on the site at
+ * once: consistent borders, radius, focus rings, and dark-mode colors.
+ */
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+    overflow-x: hidden;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  /*
+   * CSS Grid/Flex children default to `min-width: auto`, which means their
+   * content's intrinsic size (a long <select> option, an unbreakable word)
+   * can force the grid track — and the whole page — wider than the viewport,
+   * even though the child itself has `w-full`. This is what caused filter
+   * bars and sidebar cards to overflow off-screen on mobile. Grid/flex
+   * *items* get `min-width: 0` by default so `w-full`/wrapping actually
+   * constrains them; anything that intentionally needs horizontal scroll
+   * (tables wrapped in `.overflow-x-auto`) opts back out below.
+   */
+  .grid > *, .flex > * {
+    min-width: 0;
+  }
+  .overflow-x-auto, .overflow-x-auto > * {
+    min-width: revert;
+  }
+
+  h1, h2, h3 {
+    letter-spacing: -0.02em;
+  }
+
+  input[type='text'],
+  input[type='email'],
+  input[type='password'],
+  input[type='search'],
+  input[type='url'],
+  input[type='number'],
+  textarea,
+  select {
+    @apply border-slate-300 bg-white text-slate-900 placeholder-slate-400 transition-colors;
+  }
+
+  input[type='text']:focus,
+  input[type='email']:focus,
+  input[type='password']:focus,
+  input[type='search']:focus,
+  input[type='url']:focus,
+  input[type='number']:focus,
+  textarea:focus,
+  select:focus {
+    @apply outline-none ring-2 ring-indigo-500/60 border-indigo-400;
+  }
+
+  .dark input[type='text'],
+  .dark input[type='email'],
+  .dark input[type='password'],
+  .dark input[type='search'],
+  .dark input[type='url'],
+  .dark input[type='number'],
+  .dark textarea,
+  .dark select {
+    @apply border-slate-600 bg-slate-800 text-slate-100 placeholder-slate-500;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    @apply text-indigo-600 border-slate-300 rounded focus:ring-indigo-500;
+  }
+  input[type='radio'] { border-radius: 9999px; }
+
+  button, a {
+    @apply transition-colors duration-150;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-indigo-500/70 ring-offset-1;
+  }
+
+  /* Tables read better with breathing room everywhere. */
+  table th { @apply font-semibold; }
+}
+
+/*
+ * ---------- Components: shared card & badge patterns ----------
+ */
+@layer components {
+  .card {
+    @apply bg-white border border-slate-200 rounded-xl shadow-card;
+  }
+  .dark .card {
+    @apply bg-slate-900 border-slate-700;
+  }
+}
+
+/*
+ * ---------- Retroactive card & button elevation ----------
+ * The vast majority of templates use the same two raw utility combos
+ * (`bg-white border rounded-lg ...` for cards, `bg-indigo-600 ... text-white
+ * rounded ...` for primary buttons) rather than the `.card` component above.
+ * Targeting those exact combos here upgrades every card/button site-wide
+ * — consistent shadow, radius, spacing — without touching ~150 templates.
+ */
+@layer utilities {
+  .bg-white.border.rounded-lg {
+    border-radius: 0.75rem;
+    border-color: theme('colors.slate.200');
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  }
+  .dark .bg-white.border.rounded-lg {
+    border-color: theme('colors.slate.700');
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4);
+  }
+
+  a.bg-indigo-600.text-white.rounded,
+  button.bg-indigo-600.text-white.rounded,
+  a.bg-indigo-600.text-white.rounded-lg,
+  button.bg-indigo-600.text-white.rounded-lg {
+    border-radius: 0.5rem;
+    font-weight: 500;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.06);
+  }
+  a.bg-indigo-600.text-white.rounded:hover,
+  button.bg-indigo-600.text-white.rounded:hover,
+  a.bg-indigo-600.text-white.rounded-lg:hover,
+  button.bg-indigo-600.text-white.rounded-lg:hover {
+    box-shadow: 0 2px 6px 0 rgb(79 70 229 / 0.35);
+  }
+
+  /* Secondary/neutral buttons on the same rounded pattern get a hairline border for contrast. */
+  a.bg-slate-100.rounded,
+  button.bg-slate-100.rounded,
+  a.bg-slate-600.text-white.rounded,
+  button.bg-slate-600.text-white.rounded {
+    border-radius: 0.5rem;
+    font-weight: 500;
+  }
+}
+
+/*
+ * Global dark-mode overrides for the many pages that use plain
+ * bg-white/border/text-slate-* utility cards. Rewriting dark: variants
+ * into every single page is impractical at this codebase size, so these
+ * blanket rules give a consistent, working dark theme everywhere; pages
+ * that want finer control can still add their own dark: classes, which
+ * win via normal CSS specificity/source order since this runs first.
+ */
+@layer utilities {
+  .dark .bg-white { background-color: theme('colors.slate.900'); }
+  .dark .bg-slate-50 { background-color: theme('colors.slate.950'); }
+  .dark .bg-slate-100 { background-color: theme('colors.slate.800'); }
+  .dark .bg-slate-200 { background-color: theme('colors.slate.700'); }
+  .dark .bg-indigo-50 { background-color: theme('colors.slate.800'); }
+  .dark .bg-amber-50 { background-color: rgb(69 26 3 / 0.4); }
+  .dark .bg-green-50 { background-color: rgb(5 46 22 / 0.5); }
+  .dark .bg-red-50 { background-color: rgb(69 10 10 / 0.5); }
+  .dark .border,
+  .dark .border-t,
+  .dark .border-b,
+  .dark .border-t-0,
+  .dark .border-l-2 { border-color: theme('colors.slate.700'); }
+  .dark .text-slate-900 { color: theme('colors.slate.100'); }
+  .dark .text-slate-800 { color: theme('colors.slate.200'); }
+  .dark .text-slate-700 { color: theme('colors.slate.300'); }
+  .dark .text-slate-600 { color: theme('colors.slate.400'); }
+  .dark .text-slate-500 { color: theme('colors.slate.400'); }
+  .dark .text-slate-400 { color: theme('colors.slate.500'); }
+  .dark .prose { color: theme('colors.slate.300'); }
+  .dark .prose :where(h1,h2,h3,h4,strong,code) { color: theme('colors.slate.100'); }
+  .dark .prose :where(a) { color: theme('colors.indigo.400'); }
+  .dark .prose :where(blockquote) { color: theme('colors.slate.400'); border-color: theme('colors.slate.600'); }
+}
