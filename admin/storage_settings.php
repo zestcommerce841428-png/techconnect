@@ -13,6 +13,15 @@ if ($admin['role'] !== 'admin') {
 $pdo = db();
 $testResult = null;
 
+/** Cost-control settings — these decide how much you actually pay. */
+$costFields = [
+    'image_optimize_enabled' => ['Optimise images on upload', 'checkbox', 'Downscale and recompress before storing. Typically saves 85-95% — charged twice (storage + every view), so this is the biggest cost lever.'],
+    'image_prefer_webp' => ['Convert to WebP', 'checkbox', 'About 30% smaller than JPEG at the same quality. Supported by every browser since 2020.'],
+    'image_max_dimension' => ['Max image dimension (px)', 'number', 'Longest edge. 1600 suits a ~800px content column on 2x screens. Lower = cheaper.'],
+    'image_quality' => ['Image quality (40-100)', 'number', '82 is visually lossless for photos. Below 70 shows artefacts.'],
+    'max_upload_mb' => ['Max upload size (MB)', 'number', 'Hard ceiling per file, enforced before any processing.'],
+];
+
 /** Settings this page owns. Secrets are write-only in the UI (never echoed back). */
 $fields = [
     's3_endpoint' => ['Endpoint URL', 'https://<account-id>.r2.cloudflarestorage.com', false],
@@ -41,6 +50,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $save->execute([$key, $val]);
         }
+        // Cost controls. Checkboxes are absent from POST when unticked, so they
+        // must be written explicitly rather than skipped.
+        foreach ($costFields as $key => [$label, $type, $hint]) {
+            if ($type === 'checkbox') {
+                $save->execute([$key, isset($_POST[$key]) ? '1' : '0']);
+            } else {
+                $val = (int) ($_POST[$key] ?? 0);
+                $val = match ($key) {
+                    'image_max_dimension' => min(4000, max(200, $val)),
+                    'image_quality' => min(100, max(40, $val)),
+                    'max_upload_mb' => min(50, max(1, $val)),
+                    default => $val,
+                };
+                $save->execute([$key, (string) $val]);
+            }
+        }
         audit_log($admin['id'], 'storage_settings_updated', 'settings', null, 'driver=' . $driver);
         flash_set('success', 'Storage settings saved.');
         redirect('/admin/storage_settings');
@@ -58,6 +83,38 @@ $currentDriver = setting('storage_driver', 'local');
 $active = storage();
 $activeName = $active instanceof S3Storage ? 'S3-compatible' : 'Local disk';
 $fellBack = $currentDriver === 's3' && !($active instanceof S3Storage);
+
+require_once __DIR__ . '/../includes/image_optimizer.php'; // format_bytes()
+
+// ---- Real usage, straight from the uploads ledger ----------------------------
+$usage = ['files' => 0, 'bytes' => 0, 'bytes_30d' => 0];
+try {
+    $row = $pdo->query('SELECT COUNT(*) files, COALESCE(SUM(size),0) bytes FROM uploads')->fetch();
+    $usage['files'] = (int) $row['files'];
+    $usage['bytes'] = (int) $row['bytes'];
+    $usage['bytes_30d'] = (int) $pdo->query('SELECT COALESCE(SUM(size),0) FROM uploads WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)')->fetchColumn();
+} catch (Throwable $e) {
+    // uploads table shape differs / missing — usage panel just shows zeros
+}
+
+$gb = $usage['bytes'] / 1073741824;
+$growthGbMonth = $usage['bytes_30d'] / 1073741824;
+// Egress assumption: each stored byte served ~5x/month. Crude, but it is the
+// term that actually dominates S3 bills and is invisible until it arrives.
+$egressGb = $gb * 5;
+
+/**
+ * Published list prices (USD), Jul 2026. Storage $/GB/mo, egress $/GB.
+ * R2's zero egress is the entire reason it is recommended for a media-heavy
+ * community site — egress, not storage, is what makes S3 bills explode.
+ */
+$providers = [
+    'Cloudflare R2' => ['store' => 0.015, 'egress' => 0.0, 'note' => 'No egress fees — best for public media'],
+    'Backblaze B2' => ['store' => 0.006, 'egress' => 0.01, 'note' => 'Cheapest storage; free egress via Cloudflare'],
+    'Wasabi' => ['store' => 0.0069, 'egress' => 0.0, 'note' => 'No egress, but 90-day minimum retention'],
+    'DO Spaces' => ['store' => 0.02, 'egress' => 0.01, 'note' => '$5/mo includes 250GB + 1TB transfer'],
+    'AWS S3 (Mumbai)' => ['store' => 0.025, 'egress' => 0.1093, 'note' => 'Egress is ~7x the storage cost at 5x reads'],
+];
 ?>
 <h1 class="text-2xl font-bold mb-1">☁️ Storage</h1>
 <p class="text-sm text-slate-500 mb-5">
@@ -107,6 +164,40 @@ $fellBack = $currentDriver === 's3' && !($active instanceof S3Storage);
         <?php endforeach; ?>
       </div>
 
+      <div class="border-t pt-4">
+        <h2 class="text-sm font-semibold mb-1">💰 Cost controls</h2>
+        <p class="text-xs text-slate-500 mb-3">
+          These apply to every upload regardless of backend. Optimising at upload is the only saving that
+          compounds — a byte not stored is also a byte never served.
+        </p>
+        <div class="space-y-3">
+          <?php foreach ($costFields as $key => [$label, $type, $hint]): ?>
+            <?php if ($type === 'checkbox'): ?>
+              <label class="flex items-start gap-2 text-sm">
+                <input type="checkbox" name="<?= e($key) ?>" value="1" class="mt-0.5"
+                       <?= setting($key, $key === 'max_upload_mb' ? '' : '1') === '1' ? 'checked' : '' ?>>
+                <span>
+                  <span class="font-medium"><?= e($label) ?></span>
+                  <span class="block text-xs text-slate-400"><?= e($hint) ?></span>
+                </span>
+              </label>
+            <?php else: ?>
+              <div>
+                <label for="<?= e($key) ?>" class="block text-sm font-medium mb-1"><?= e($label) ?></label>
+                <input id="<?= e($key) ?>" type="number" name="<?= e($key) ?>"
+                       value="<?= e(setting($key, match ($key) {
+                           'image_max_dimension' => '1600',
+                           'image_quality' => '82',
+                           'max_upload_mb' => '5',
+                           default => '',
+                       })) ?>" class="w-32 border rounded px-3 py-2 text-sm">
+                <p class="text-xs text-slate-400 mt-1"><?= e($hint) ?></p>
+              </div>
+            <?php endif; ?>
+          <?php endforeach; ?>
+        </div>
+      </div>
+
       <div class="flex items-center gap-2 pt-1">
         <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded text-sm font-medium">Save settings</button>
       </div>
@@ -125,6 +216,44 @@ $fellBack = $currentDriver === 's3' && !($active instanceof S3Storage);
       <h2 class="text-sm font-semibold mb-2">Currently active</h2>
       <p class="text-sm"><span class="inline-block w-2 h-2 rounded-full <?= $fellBack ? 'bg-amber-500' : 'bg-green-500' ?> mr-1.5"></span><?= e($activeName) ?></p>
       <p class="text-xs text-slate-500 mt-2">New uploads go here. Existing files stay where they were written — switching backends does not migrate old media.</p>
+    </div>
+
+    <div class="bg-white border rounded-lg p-4">
+      <h2 class="text-sm font-semibold mb-2">📊 Current usage</h2>
+      <div class="text-2xl font-bold"><?= e(format_bytes($usage['bytes'])) ?></div>
+      <p class="text-xs text-slate-500"><?= number_format($usage['files']) ?> file<?= $usage['files'] === 1 ? '' : 's' ?> stored</p>
+      <p class="text-xs text-slate-500 mt-1">
+        +<?= e(format_bytes($usage['bytes_30d'])) ?> in the last 30 days
+        <?php if ($growthGbMonth > 0): ?>
+          <span class="block text-slate-400">≈ <?= round($growthGbMonth * 12, 1) ?> GB/year at this rate</span>
+        <?php endif; ?>
+      </p>
+    </div>
+
+    <div class="bg-white border rounded-lg p-4">
+      <h2 class="text-sm font-semibold mb-1">💵 Estimated monthly cost</h2>
+      <p class="text-xs text-slate-400 mb-2">
+        At <?= round($gb, 2) ?> GB stored and ~<?= round($egressGb, 1) ?> GB served/month (assuming each file viewed ~5x).
+      </p>
+      <table class="w-full text-xs">
+        <tbody>
+          <?php foreach ($providers as $name => $p):
+              $cost = $gb * $p['store'] + $egressGb * $p['egress']; ?>
+            <tr class="border-b last:border-0">
+              <td class="py-1.5">
+                <span class="font-medium"><?= e($name) ?></span>
+                <span class="block text-slate-400 text-[10px] leading-tight"><?= e($p['note']) ?></span>
+              </td>
+              <td class="py-1.5 text-right align-top whitespace-nowrap font-mono">
+                <?= $cost < 0.01 ? '<$0.01' : '$' . number_format($cost, 2) ?>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+      <p class="text-[10px] text-slate-400 mt-2">
+        List prices, Jul 2026. Estimates only — egress is the term that surprises people, so it is included.
+      </p>
     </div>
 
     <div class="bg-white border rounded-lg p-4">

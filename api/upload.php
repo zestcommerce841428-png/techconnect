@@ -53,26 +53,44 @@ if (!isset($allowed[$mime])) {
     exit;
 }
 
-$ext = $allowed[$mime];
+// Optimise before storing: bytes we never store are bytes we never pay to store
+// OR to serve. Falls back to the original on any failure.
+require_once __DIR__ . '/../includes/image_optimizer.php';
+$rawBytes = (string) file_get_contents($file['tmp_name']);
+$originalSize = strlen($rawBytes);
+[$bytes, $mime, $ext] = optimize_image($rawBytes, $mime);
+if ($ext === 'bin') {
+    $ext = $allowed[$mime] ?? 'bin';
+}
+
 $storagePath = date('Y') . '/' . date('m') . '/' . bin2hex(random_bytes(16)) . '.' . $ext;
 
 // Routed through the storage abstraction so the same upload works on local disk
 // or any S3-compatible bucket, decided by admin settings rather than by code.
 require_once __DIR__ . '/../includes/storage/storage.php';
 try {
-    $publicPath = storage()->put($storagePath, (string) file_get_contents($file['tmp_name']), $mime);
+    $publicPath = storage()->put($storagePath, $bytes, $mime);
 } catch (Throwable $e) {
     error_log('upload failed: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['error' => 'Failed to save file. Please try again.']);
     exit;
 }
+$storedSize = strlen($bytes);
 
 $pdo = db();
+// Record the STORED size, not the uploaded size — this table is what the storage
+// dashboard bills against, so it must reflect what actually occupies the bucket.
 $pdo->prepare('INSERT INTO uploads (user_id, path, original_name, mime, size) VALUES (?, ?, ?, ?, ?)')
-    ->execute([$user['id'], $publicPath, basename($file['name']), $mime, $file['size']]);
+    ->execute([$user['id'], $publicPath, basename($file['name']), $mime, $storedSize]);
 
 $isImage = str_starts_with($mime, 'image/');
 $markdown = $isImage ? "![{$file['name']}]({$publicPath})" : "[{$file['name']}]({$publicPath})";
 
-echo json_encode(['url' => $publicPath, 'markdown' => $markdown]);
+echo json_encode([
+    'url' => $publicPath,
+    'markdown' => $markdown,
+    'original_size' => $originalSize,
+    'stored_size' => $storedSize,
+    'saved_percent' => $originalSize > 0 ? round((1 - $storedSize / $originalSize) * 100) : 0,
+]);
