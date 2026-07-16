@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $errors[] = 'Invalid authentication code.';
         }
-    } elseif (!rate_limit('login', 8, 300)) {
+    } elseif (!rate_limit('login', 8, 300) || !rate_limit_ip('login', 20, 900)) {
         $errors[] = 'Too many login attempts. Please wait a few minutes.';
     } else {
         $identity = trim($_POST['identity'] ?? '');

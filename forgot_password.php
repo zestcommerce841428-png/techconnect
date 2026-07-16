@@ -5,7 +5,7 @@ require_once __DIR__ . '/includes/mailer.php';
 $sent = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
-    if (rate_limit('forgot_password', 5, 600)) {
+    if (rate_limit('forgot_password', 5, 600) && rate_limit_ip('forgot_password', 10, 3600) && !honeypot_tripped()) {
         $email = trim($_POST['email'] ?? '');
         $stmt = db()->prepare('SELECT id, username FROM users WHERE email = ?');
         $stmt->execute([$email]);
@@ -39,7 +39,7 @@ require __DIR__ . '/includes/header.php';
   <?php else: ?>
     <p class="text-sm text-slate-500 text-center mb-5">Enter your email and we'll send you a reset link.</p>
     <form method="post" class="space-y-4">
-      <?= csrf_field() ?>
+      <?= csrf_field() . honeypot_field() ?>
       <div>
         <label for="fp_email" class="block text-sm font-medium mb-1">Email</label>
         <input id="fp_email" type="email" name="email" required autofocus class="w-full border rounded-lg px-3 py-2.5">

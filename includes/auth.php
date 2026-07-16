@@ -175,6 +175,34 @@ function verify_csrf(): void
 }
 
 /**
+ * IP-keyed fixed-window rate limiter backed by temp files, for abuse-sensitive
+ * endpoints (login, register, password reset) where the session-based limiter
+ * can be bypassed by discarding cookies. Complements rate_limit(), not a replacement.
+ */
+function rate_limit_ip(string $key, int $maxAttempts, int $windowSeconds): bool
+{
+    require_once __DIR__ . '/api_auth.php';
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    return api_rate_limit_bucket($key . '_' . substr(hash('sha256', $ip), 0, 40), $maxAttempts, $windowSeconds);
+}
+
+/**
+ * Honeypot anti-spam: render a field real users never see; bots that fill it
+ * are silently detected. Pair honeypot_field() in the form with
+ * honeypot_tripped() in the POST handler.
+ */
+function honeypot_field(): string
+{
+    return '<div style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true">'
+        . '<label>Leave this field empty<input type="text" name="website_url" tabindex="-1" autocomplete="off" value=""></label></div>';
+}
+
+function honeypot_tripped(): bool
+{
+    return ($_POST['website_url'] ?? '') !== '';
+}
+
+/**
  * Simple fixed-window rate limiter stored in session; good enough for shared hosting
  * without needing a cache layer. Key should be action-specific (e.g. 'login').
  */

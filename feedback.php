@@ -22,7 +22,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'page_url' => trim($_POST['page_url'] ?? ''),
     ];
 
-    if (!rate_limit('feedback', 5, 600)) {
+    if (honeypot_tripped()) {
+        $sent = true; // bot: fake success, store nothing
+    } elseif (!rate_limit('feedback', 5, 600)) {
         $errors[] = 'Too many submissions. Please try again in a few minutes.';
     } elseif (!captcha_verify()) {
         $errors[] = 'Captcha verification failed. Please try again.';
@@ -107,7 +109,7 @@ require __DIR__ . '/includes/header.php';
         <div class="mb-3 rounded border border-red-300 bg-red-50 text-red-800 px-3 py-2 text-sm"><?= e($err) ?></div>
       <?php endforeach; ?>
       <form method="post" class="space-y-3">
-        <?= csrf_field() ?>
+        <?= csrf_field() . honeypot_field() ?>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label for="fb_type" class="block text-sm font-medium mb-1">Type</label>

@@ -2,6 +2,20 @@
 require_once __DIR__ . '/../../includes/auth.php';
 $admin = require_role('admin', 'moderator');
 $pageTitle = $pageTitle ?? 'Admin — ' . SITE_NAME;
+
+// Pending-work counters for the nav badges; tolerate missing tables mid-migration.
+$navBadge = function (string $sql): string {
+    try {
+        $n = (int) db()->query($sql)->fetchColumn();
+    } catch (Throwable $e) {
+        $n = 0;
+    }
+    return $n > 0 ? ' <span class="ml-1 inline-block min-w-[1.25rem] text-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1 py-0.5">' . $n . '</span>' : '';
+};
+$badgeReports = $navBadge("SELECT COUNT(*) FROM reports WHERE status = 'open'");
+$badgeFeedback = $navBadge("SELECT COUNT(*) FROM feedback WHERE status = 'new'");
+$badgeEdits = $navBadge("SELECT COUNT(*) FROM suggested_edits WHERE status = 'pending'");
+$badgeJobs = $navBadge("SELECT COUNT(*) FROM jobs WHERE status = 'pending'");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -21,11 +35,11 @@ $pageTitle = $pageTitle ?? 'Admin — ' . SITE_NAME;
   <nav id="admin-nav" class="hidden md:block space-y-1 text-sm mt-3 md:mt-0">
     <a href="/admin/dashboard" class="block px-2 py-1.5 rounded hover:bg-slate-800">Dashboard</a>
     <a href="/admin/users" class="block px-2 py-1.5 rounded hover:bg-slate-800">Users</a>
-    <a href="/admin/moderation" class="block px-2 py-1.5 rounded hover:bg-slate-800">Moderation</a>
-    <a href="/admin/feedback" class="block px-2 py-1.5 rounded hover:bg-slate-800">Feedback</a>
+    <a href="/admin/moderation" class="block px-2 py-1.5 rounded hover:bg-slate-800">Moderation<?= $badgeReports ?></a>
+    <a href="/admin/feedback" class="block px-2 py-1.5 rounded hover:bg-slate-800">Feedback<?= $badgeFeedback ?></a>
     <a href="/admin/merge_questions" class="block px-2 py-1.5 rounded hover:bg-slate-800">Merge Questions</a>
-    <a href="/admin/suggested_edits" class="block px-2 py-1.5 rounded hover:bg-slate-800">Suggested Edits</a>
-    <a href="/admin/jobs" class="block px-2 py-1.5 rounded hover:bg-slate-800">Jobs</a>
+    <a href="/admin/suggested_edits" class="block px-2 py-1.5 rounded hover:bg-slate-800">Suggested Edits<?= $badgeEdits ?></a>
+    <a href="/admin/jobs" class="block px-2 py-1.5 rounded hover:bg-slate-800">Jobs<?= $badgeJobs ?></a>
     <a href="/admin/uploads" class="block px-2 py-1.5 rounded hover:bg-slate-800">Uploads</a>
     <a href="/admin/pages" class="block px-2 py-1.5 rounded hover:bg-slate-800">Pages</a>
     <a href="/admin/blog" class="block px-2 py-1.5 rounded hover:bg-slate-800">Blog</a>

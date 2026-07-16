@@ -15,7 +15,11 @@ if (setting('allow_registrations', '1') !== '1') {
 $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
-    if (!rate_limit('register', 5, 600)) {
+    if (honeypot_tripped()) {
+        // Bot filled the invisible field — pretend nothing happened.
+        redirect('/');
+    }
+    if (!rate_limit('register', 5, 600) || !rate_limit_ip('register', 10, 3600)) {
         $errors[] = 'Too many attempts. Please try again later.';
     } elseif (!captcha_verify()) {
         $errors[] = 'Captcha verification failed. Please try again.';
@@ -82,7 +86,7 @@ require __DIR__ . '/includes/header.php';
     <div class="mb-3 rounded-lg border border-red-300 bg-red-50 text-red-800 px-3 py-2 text-sm"><?= e($err) ?></div>
   <?php endforeach; ?>
   <form method="post" class="space-y-4">
-    <?= csrf_field() ?>
+    <?= csrf_field() . honeypot_field() ?>
     <div>
       <label for="reg_username" class="block text-sm font-medium mb-1">Username</label>
       <input id="reg_username" type="text" name="username" required autofocus class="w-full border rounded-lg px-3 py-2.5" value="<?= e($_POST['username'] ?? '') ?>">
