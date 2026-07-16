@@ -34,8 +34,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = 'Please enter a valid email address.';
     }
-    if (strlen($password) < 8) {
-        $errors[] = 'Password must be at least 8 characters.';
+    require_once __DIR__ . '/includes/password_policy.php';
+    foreach (validate_password($password, [$username, $email]) as $pwErr) {
+        $errors[] = $pwErr;
     }
 
     if (!$errors) {

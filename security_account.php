@@ -23,8 +23,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$hash || !password_verify($current, $hash)) {
             flash_set('error', 'Current password is incorrect.');
-        } elseif (mb_strlen($new) < 8) {
-            flash_set('error', 'New password must be at least 8 characters.');
+        } elseif ($pwErrors = (function () use ($new, $user) {
+            require_once __DIR__ . '/includes/password_policy.php';
+            return validate_password($new, [$user['username'], $user['email']]);
+        })()) {
+            flash_set('error', $pwErrors[0]);
         } elseif ($new !== $confirm) {
             flash_set('error', "New passwords don't match.");
         } else {

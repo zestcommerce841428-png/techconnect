@@ -12,8 +12,10 @@ if (!$row) {
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     $password = $_POST['password'] ?? '';
-    if (strlen($password) < 8) {
-        $errors[] = 'Password must be at least 8 characters.';
+    require_once __DIR__ . '/includes/password_policy.php';
+    $pwErrors = validate_password($password);
+    if ($pwErrors) {
+        foreach ($pwErrors as $pwErr) { $errors[] = $pwErr; }
     } else {
         // Also bump session_version and drop remember-me tokens: a password reset
         // usually means the account may be compromised, so every existing login
