@@ -17,7 +17,7 @@ $pageTitle = $pageTitle ?? $siteName . ' — ' . setting('tagline', 'Ask, answer
 $pageDescription = $pageDescription ?? 'A worldwide community where people ask questions and get real answers from nearby and global experts.';
 $logoPath = setting('logo_path');
 $faviconPath = setting('favicon_path');
-$ogImagePath = SITE_URL . '/assets/images/og-image.png';
+$ogImagePath = $ogImage ?? SITE_URL . '/assets/images/og-image.png';
 ?>
 <!DOCTYPE html>
 <html lang="en">

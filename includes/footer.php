@@ -110,6 +110,10 @@ $tawkWidgetId = setting('tawk_widget_id');
   }, { passive: true });
   top.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
 
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(function () {});
+  }
+
   var consent = document.getElementById('cookie-consent');
   try {
     if (!localStorage.getItem('cookie_consent')) consent.classList.remove('hidden');

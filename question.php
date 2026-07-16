@@ -354,6 +354,7 @@ if ($user) {
 }
 
 $pageTitle = $question['title'] . ' — ' . SITE_NAME;
+$ogImage = SITE_URL . '/og_image?slug=' . urlencode($question['slug']);
 $pageDescription = mb_substr(strip_tags($question['body']), 0, 160);
 require __DIR__ . '/includes/header.php';
 ?>

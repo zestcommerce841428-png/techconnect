@@ -179,6 +179,47 @@ require __DIR__ . '/includes/header.php';
       </select>
       <script>
       (function () {
+        // Duplicate detector: as the title is typed, surface existing similar
+        // questions via the site's own search endpoint (debounced).
+        var title = document.getElementById('ask-title');
+        var box = document.getElementById('ask-similar');
+        var list = document.getElementById('ask-similar-list');
+        var timer = null;
+        if (title && box && list) {
+          title.addEventListener('input', function () {
+            clearTimeout(timer);
+            var q = title.value.trim();
+            if (q.length < 8) { box.classList.add('hidden'); return; }
+            timer = setTimeout(function () {
+              fetch('/api/search_suggest.php?q=' + encodeURIComponent(q))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                  var results = (data.results || []).slice(0, 4);
+                  if (!results.length) { box.classList.add('hidden'); return; }
+                  list.innerHTML = '';
+                  results.forEach(function (r) {
+                    var li = document.createElement('li');
+                    var a = document.createElement('a');
+                    a.href = '/q/' + r.slug;
+                    a.target = '_blank';
+                    a.rel = 'noopener';
+                    a.className = 'text-indigo-700 hover:underline';
+                    a.textContent = r.title;
+                    li.appendChild(a);
+                    var meta = document.createElement('span');
+                    meta.className = 'text-xs text-amber-700';
+                    meta.textContent = ' — ' + (r.answer_count || 0) + ' answer' + (r.answer_count == 1 ? '' : 's');
+                    li.appendChild(meta);
+                    list.appendChild(li);
+                  });
+                  box.classList.remove('hidden');
+                })
+                .catch(function () { box.classList.add('hidden'); });
+            }, 450);
+          });
+        }
+      })();
+      (function () {
         var filter = document.getElementById('ask-category-filter');
         var select = document.getElementById('ask-category');
         if (!filter || !select) return;
@@ -202,6 +243,10 @@ require __DIR__ . '/includes/header.php';
     </div>
     <div>
       <label for="ask-title" class="block text-sm font-medium mb-1">Title</label>
+      <div id="ask-similar" class="hidden mb-2 border border-amber-200 bg-amber-50 rounded-lg p-3 text-sm">
+        <p class="font-medium text-amber-800 mb-1.5">Similar questions already exist — one of these might already have your answer:</p>
+        <ul id="ask-similar-list" class="space-y-1"></ul>
+      </div>
       <input type="text" name="title" id="ask-title" maxlength="200" placeholder="Be specific — e.g. 'PHP PDO throws timeout on Hostinger shared hosting'"
              class="w-full border rounded px-3 py-2" value="<?= e($_POST['title'] ?? $draft['title'] ?? $_GET['title'] ?? '') ?>" autocomplete="off">
       <div id="related-questions" class="mt-2 hidden">
