@@ -26,6 +26,9 @@ $ogImagePath = $ogImage ?? SITE_URL . '/assets/images/og-image.png';
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= e($pageTitle) ?></title>
 <meta name="description" content="<?= e($pageDescription) ?>">
+<?php if (!empty($pageRobots)): ?>
+<meta name="robots" content="<?= e($pageRobots) ?>">
+<?php endif; ?>
 <link rel="canonical" href="<?= e(SITE_URL . $_SERVER['REQUEST_URI']) ?>">
 <meta property="og:title" content="<?= e($pageTitle) ?>">
 <meta property="og:description" content="<?= e($pageDescription) ?>">

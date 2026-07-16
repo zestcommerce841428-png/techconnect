@@ -69,6 +69,11 @@ $popularTags = $pdo->query('SELECT name, slug FROM tags ORDER BY use_count DESC 
 $allCategories = $pdo->query('SELECT * FROM categories WHERE is_active = 1 ORDER BY sort_order, name')->fetchAll();
 
 $pageTitle = ($activeCategory ? $activeCategory['name'] . ' questions' : 'Browse questions') . ' — ' . SITE_NAME;
+// An empty category/tag listing is thin content: let Google follow the links out
+// but keep the empty page itself out of the index until it has real questions.
+if (!$questions && ($categorySlug !== '' || ($_GET['tag'] ?? '') !== '')) {
+    $pageRobots = 'noindex, follow';
+}
 require __DIR__ . '/includes/header.php';
 ?>
 <div class="grid grid-cols-1 md:grid-cols-4 gap-6">

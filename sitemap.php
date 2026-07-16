@@ -5,8 +5,15 @@ header('Content-Type: application/xml; charset=utf-8');
 
 $pdo = db();
 $questions = $pdo->query("SELECT slug, updated_at FROM questions WHERE group_id IS NULL AND status != 'draft' AND merged_into_id IS NULL ORDER BY updated_at DESC LIMIT 5000")->fetchAll();
-$tags = $pdo->query('SELECT slug FROM tags')->fetchAll();
-$categories = $pdo->query('SELECT slug FROM categories WHERE is_active = 1')->fetchAll();
+// Only advertise category/tag pages that actually have questions — submitting
+// hundreds of empty listings burns crawl budget and reads as thin content.
+$tags = $pdo->query('SELECT slug FROM tags WHERE use_count > 0')->fetchAll();
+$categories = $pdo->query(
+    "SELECT c.slug FROM categories c
+     JOIN questions q ON q.category_id = c.id AND q.status <> 'draft' AND q.merged_into_id IS NULL
+     WHERE c.is_active = 1
+     GROUP BY c.id"
+)->fetchAll();
 $pages = $pdo->query('SELECT slug, updated_at FROM pages WHERE is_published = 1')->fetchAll();
 $blogPosts = $pdo->query("SELECT slug, updated_at FROM blog_posts WHERE status = 'published'")->fetchAll();
 
