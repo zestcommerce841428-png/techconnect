@@ -47,6 +47,7 @@ $tawkWidgetId = setting('tawk_widget_id');
         <a href="/categories" class="hover:underline">Topics</a>
         <a href="/collections" class="hover:underline">Collections</a>
         <a href="/api_docs" class="hover:underline">API</a>
+        <a href="/stats" class="hover:underline">Stats</a>
         <a href="/status" class="hover:underline">Status</a>
         <a href="/rss" class="hover:underline">RSS</a>
         <?php $dedicatedSlugs = ['about', 'privacy', 'terms', 'cookies', 'guidelines', 'faq']; ?>

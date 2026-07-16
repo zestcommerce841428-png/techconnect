@@ -384,6 +384,48 @@ require __DIR__ . '/includes/header.php';
 ], JSON_UNESCAPED_SLASHES) ?></script>
 <script>window.CSRF_TOKEN = <?= json_encode(csrf_token()) ?>;</script>
 <link rel="stylesheet" href="/assets/vendor/prism.css">
+<?php
+$qCategory = null;
+if (!empty($question['category_id'])) {
+    $catStmt = $pdo->prepare('SELECT name, slug FROM categories WHERE id = ?');
+    $catStmt->execute([$question['category_id']]);
+    $qCategory = $catStmt->fetch() ?: null;
+}
+$breadcrumbs = [['Home', SITE_URL . '/']];
+if ($qCategory) $breadcrumbs[] = [$qCategory['name'], SITE_URL . '/c/' . $qCategory['slug']];
+$breadcrumbs[] = [$question['title'], SITE_URL . '/q/' . $question['slug']];
+?>
+<script type="application/ld+json"><?= json_encode([
+    '@context' => 'https://schema.org',
+    '@type' => 'BreadcrumbList',
+    'itemListElement' => array_map(fn($b, $i) => [
+        '@type' => 'ListItem', 'position' => $i + 1, 'name' => $b[0], 'item' => $b[1],
+    ], $breadcrumbs, array_keys($breadcrumbs)),
+], JSON_UNESCAPED_SLASHES) ?></script>
+
+<nav aria-label="Breadcrumb" class="flex items-center justify-between gap-3 mb-3 text-sm">
+  <ol class="flex items-center gap-1.5 text-slate-500 min-w-0 overflow-hidden">
+    <li><a href="/" class="hover:underline">Home</a></li>
+    <?php if ($qCategory): ?>
+      <li aria-hidden="true">›</li>
+      <li><a href="/c/<?= e($qCategory['slug']) ?>" class="hover:underline"><?= e($qCategory['name']) ?></a></li>
+    <?php endif; ?>
+    <li aria-hidden="true">›</li>
+    <li class="truncate text-slate-700" aria-current="page"><?= e(mb_substr($question['title'], 0, 60)) ?><?= mb_strlen($question['title']) > 60 ? '…' : '' ?></li>
+  </ol>
+  <button type="button" id="q-share" class="shrink-0 text-xs px-3 py-1.5 rounded-full border bg-white hover:bg-slate-50"
+          data-title="<?= e($question['title']) ?>" data-url="<?= e(SITE_URL . '/q/' . $question['slug']) ?>">🔗 Share</button>
+</nav>
+<script>
+document.getElementById('q-share').addEventListener('click', function () {
+  var btn = this, data = { title: btn.dataset.title, url: btn.dataset.url };
+  if (navigator.share) { navigator.share(data).catch(function () {}); return; }
+  navigator.clipboard.writeText(data.url).then(function () {
+    btn.textContent = '✓ Link copied';
+    setTimeout(function () { btn.textContent = '🔗 Share'; }, 2000);
+  });
+});
+</script>
 
 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
 <div class="lg:col-span-3">
