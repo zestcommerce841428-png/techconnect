@@ -127,6 +127,10 @@ $admins = $pdo->query("SELECT id, username FROM users WHERE role IN ('admin', 'm
     <code class="bg-slate-100 px-1 rounded">tags</code> (pipe-separated, e.g. <code class="bg-slate-100 px-1 rounded">php|mysql</code>) optional.
     Markdown is supported in the body. Max 500 rows per upload; exact-title duplicates are skipped.
   </p>
+  <p class="text-sm mb-4">
+    <a href="/assets/sample_questions.csv" download class="text-indigo-600 hover:underline">⬇ Download a sample CSV</a>
+    <span class="text-slate-400">— 5 example rows showing the exact format. Open it in Excel or Google Sheets, replace the rows, upload.</span>
+  </p>
   <form method="post" enctype="multipart/form-data" class="space-y-4">
     <?= csrf_field() ?>
     <div>

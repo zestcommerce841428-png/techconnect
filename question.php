@@ -691,8 +691,52 @@ document.getElementById('q-share').addEventListener('click', function () {
             <div data-md-preview class="prose prose-slate max-w-none border rounded p-3 bg-slate-50 min-h-[3rem] text-sm"></div>
           </div>
         </div>
-        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded">Post answer</button>
+        <div class="flex items-center gap-3">
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded">Post answer</button>
+          <span id="answer-draft-status" class="text-xs text-slate-400" aria-live="polite"></span>
+        </div>
       </form>
+      <script>
+      (function () {
+        // Local draft autosave: a long answer must survive an accidental
+        // navigation, refresh or crash. Kept per-question in localStorage and
+        // cleared on submit (the posted answer is now the source of truth).
+        var ta = document.getElementById('answer-body');
+        var form = ta && ta.closest('form');
+        var status = document.getElementById('answer-draft-status');
+        if (!ta || !form) return;
+        var key = 'answer_draft_<?= (int) $question['id'] ?>';
+        var timer = null;
+
+        try {
+          var saved = localStorage.getItem(key);
+          if (saved && !ta.value) {
+            ta.value = saved;
+            status.textContent = 'Restored your unsaved draft.';
+            ta.dispatchEvent(new Event('input', { bubbles: true })); // refresh preview
+          }
+        } catch (e) { return; }
+
+        ta.addEventListener('input', function () {
+          clearTimeout(timer);
+          timer = setTimeout(function () {
+            try {
+              if (ta.value.trim()) {
+                localStorage.setItem(key, ta.value);
+                status.textContent = 'Draft saved locally · ' + new Date().toLocaleTimeString();
+              } else {
+                localStorage.removeItem(key);
+                status.textContent = '';
+              }
+            } catch (e) { /* storage full or blocked — typing still works */ }
+          }, 800);
+        });
+
+        form.addEventListener('submit', function () {
+          try { localStorage.removeItem(key); } catch (e) {}
+        });
+      })();
+      </script>
     <?php else: ?>
       <p class="text-sm text-slate-600"><a href="/login" class="text-indigo-600 hover:underline">Log in</a> to post an answer.</p>
     <?php endif; ?>
