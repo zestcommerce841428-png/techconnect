@@ -12,8 +12,11 @@ PuchoNow (puchonow.in) — a Q&A community platform in plain PHP 8.3 (no framewo
 npm run build        # build:css (Tailwind → assets/css/tailwind.min.css) + build:js (esbuild assets/js/* → assets/dist/js/*)
 npm run watch:css    # Tailwind watcher during development
 php -S localhost:8000 router.php   # local dev server (router.php mirrors .htaccess rewrites; php -S ignores .htaccess)
-php -l <file>        # lint — there is no test suite; syntax-lint every touched file
+php -l <file>        # lint — syntax-lint every touched file
+php tools/smoke_test.php [base-url]   # ~51 route checks; exit 0 = pass. Run before/after every deploy
 ```
+
+`tools/smoke_test.php` is the closest thing to a test suite: it asserts public pages return 200, auth-gated pages 302 (a 200 there = auth regression), unknown routes 404, and that secret paths (`.env`, `config.php`, `includes/*`, migrations) never leak config markers in their body. Requests are sequential on purpose — parallel bursts trip shared-hosting concurrency limits and produce false 500s. Add a route here whenever you add a page.
 
 Local setup: copy `config.sample.php` to `config.php`, create a MySQL DB, apply `schema.sql` then every file in `migrations/` in numeric order. Configuration comes from `.env` (loaded by `includes/env.php`); `config.php` just maps env vars to constants.
 

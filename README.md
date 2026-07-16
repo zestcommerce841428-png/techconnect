@@ -27,10 +27,20 @@ npm install && npm run build           # compile Tailwind CSS + minify JS
 php -S localhost:8000 router.php       # router.php mirrors production .htaccess rewrites
 ```
 
+## Testing
+
+```bash
+php tools/smoke_test.php                     # against local dev server
+php tools/smoke_test.php https://puchonow.in # against production
+```
+
+Checks ~51 routes: public pages return 200, auth-gated pages redirect guests (302), unknown routes 404, and secret files never leak config in their body. Exit code 0 = all pass, so it can gate a deploy. Add your route to the list when you add a page.
+
 ## Deploying (shared hosting)
 
 1. `npm run build` locally — the server has no Node; compiled assets are committed.
 2. Upload changed files via FTP/File Manager to the site's `public_html`.
+3. Run `php tools/smoke_test.php https://puchonow.in` — 51/51 should pass.
 3. New migration? Run its SQL in phpMyAdmin (never edit an already-applied migration — add a new numbered file).
 4. Crons (hPanel → Cron Jobs, all CLI): `cron/backup_db.php` (daily), `cron/publish_scheduled.php` (hourly), `cron/resolve_bounties.php` (daily), `cron/tag_digest.php` (weekly), `cron/question_of_the_day.php` (daily, posts to Telegram).
 
