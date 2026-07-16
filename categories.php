@@ -70,6 +70,26 @@ $pageTitle = 'Browse all topics — ' . SITE_NAME;
 $pageDescription = 'Explore every topic on ' . SITE_NAME . ' — from technology and careers to exams, finance, health and everyday life.';
 require __DIR__ . '/includes/header.php';
 ?>
+<style>
+/* Scoped card styles. With 700+ cards, repeating ~250 bytes of utility classes
+   per card added ~180KB to the page; short class names keep the DOM light.
+   Page-local on purpose — no global stylesheet rebuild needed. */
+.cg { display: grid; grid-template-columns: 1fr; gap: .5rem; }
+@media (min-width: 640px) { .cg { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1024px) { .cg { grid-template-columns: repeat(3, 1fr); } }
+.cc { display: flex; align-items: flex-start; gap: .75rem; background: #fff; border: 1px solid #e2e8f0;
+      border-radius: .5rem; padding: .75rem; transition: border-color .15s, box-shadow .15s; }
+.cc:hover { border-color: #818cf8; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+.ci { font-size: 1.25rem; line-height: 1; margin-top: .125rem; }
+.cb { min-width: 0; }
+.cn, .cd, .cq { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cn { font-size: .875rem; font-weight: 500; }
+.cd { font-size: .75rem; color: #64748b; }
+.cq { font-size: .75rem; color: #4f46e5; margin-top: .125rem; }
+.dark .cc { background: #0f172a; border-color: #1e293b; }
+.dark .cd { color: #94a3b8; }
+.dark .cq { color: #818cf8; }
+</style>
 <div class="max-w-5xl mx-auto">
   <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
     <div>
@@ -84,19 +104,9 @@ require __DIR__ . '/includes/header.php';
   <?php foreach ($sections as $label => $cats): ?>
     <section data-cat-section class="mb-6">
       <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-2"><?= e($label) ?></h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-        <?php foreach ($cats as $c): ?>
-          <a href="/c/<?= e($c['slug']) ?>" data-cat-card data-cat-name="<?= e(mb_strtolower($c['name'] . ' ' . ($c['description'] ?? ''))) ?>"
-             class="flex items-start gap-3 bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-lg p-3 hover:border-indigo-400 hover:shadow-sm transition">
-            <span class="text-xl leading-none mt-0.5"><?= e($c['icon'] ?? '📁') ?></span>
-            <span class="min-w-0">
-              <span class="block text-sm font-medium truncate"><?= e($c['name']) ?></span>
-              <span class="block text-xs text-slate-500 truncate"><?= e($c['description'] ?? '') ?></span>
-              <?php if ((int) $c['question_count'] > 0): ?>
-                <span class="block text-xs text-indigo-600 mt-0.5"><?= (int) $c['question_count'] ?> question<?= (int) $c['question_count'] === 1 ? '' : 's' ?></span>
-              <?php endif; ?>
-            </span>
-          </a>
+      <div class="cg">
+        <?php foreach ($cats as $c): $n = (int) $c['question_count']; ?>
+          <a href="/c/<?= e($c['slug']) ?>" class="cc"><span class="ci"><?= e($c['icon'] ?? '📁') ?></span><span class="cb"><span class="cn"><?= e($c['name']) ?></span><span class="cd"><?= e($c['description'] ?? '') ?></span><?php if ($n): ?><span class="cq"><?= $n ?> question<?= $n === 1 ? '' : 's' ?></span><?php endif; ?></span></a>
         <?php endforeach; ?>
       </div>
     </section>
@@ -109,19 +119,23 @@ require __DIR__ . '/includes/header.php';
 (function () {
   var input = document.getElementById('cat-search');
   if (!input) return;
-  var cards = Array.prototype.slice.call(document.querySelectorAll('[data-cat-card]'));
+  // Index text once from the DOM rather than shipping a duplicate copy of every
+  // name+description in data- attributes (that cost ~43KB across 700+ cards).
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.cc')).map(function (el) {
+    return { el: el, text: (el.textContent || '').toLowerCase() };
+  });
   var sections = Array.prototype.slice.call(document.querySelectorAll('[data-cat-section]'));
   var empty = document.getElementById('cat-no-results');
   input.addEventListener('input', function () {
     var q = input.value.trim().toLowerCase();
     var any = false;
     cards.forEach(function (card) {
-      var show = !q || card.getAttribute('data-cat-name').indexOf(q) !== -1;
-      card.classList.toggle('hidden', !show);
+      var show = !q || card.text.indexOf(q) !== -1;
+      card.el.classList.toggle('hidden', !show);
       if (show) any = true;
     });
     sections.forEach(function (sec) {
-      var visible = sec.querySelector('[data-cat-card]:not(.hidden)');
+      var visible = sec.querySelector('.cc:not(.hidden)');
       sec.classList.toggle('hidden', !visible);
     });
     empty.classList.toggle('hidden', any);
