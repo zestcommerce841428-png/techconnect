@@ -55,7 +55,7 @@ function otp_issue(int $userId, string $email, string $username): bool
 
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $pdo->prepare('INSERT INTO login_otps (user_id, code_hash, expires_at, ip_address) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), ?)')
-            ->execute([$userId, hash('sha256', $code), OTP_TTL_SECONDS, $_SERVER['REMOTE_ADDR'] ?? null]);
+            ->execute([$userId, hash('sha256', $code), OTP_TTL_SECONDS, client_ip() ?: null]);
 
         $minutes = (int) (OTP_TTL_SECONDS / 60);
         $html = email_layout('Your sign-in code', [

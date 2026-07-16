@@ -20,6 +20,7 @@
  *   so a mid-migration server can never lock everyone out of the site.
  */
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/client_ip.php';
 
 const BF_MAX_FAILURES = 8;        // failures within the window before locking
 const BF_WINDOW_MINUTES = 15;     // rolling window to count failures in
@@ -33,7 +34,7 @@ function record_failed_login(string $identity, ?int $userId, string $reason = 'b
             ->execute([
                 mb_substr($identity, 0, 255),
                 $userId,
-                $_SERVER['REMOTE_ADDR'] ?? null,
+                client_ip() ?: null,
                 mb_substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255),
                 $reason,
             ]);
@@ -67,7 +68,7 @@ function record_failed_login(string $identity, ?int $userId, string $reason = 'b
                        VALUES (?, ?, ?, ?, 'locked')")
             ->execute([
                 mb_substr($identity, 0, 255), $userId,
-                $_SERVER['REMOTE_ADDR'] ?? null,
+                client_ip() ?: null,
                 mb_substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255),
             ]);
     } catch (Throwable $e) {

@@ -64,7 +64,7 @@ function maybe_send_login_alert(int $userId): void
             return;
         }
 
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        $ip = client_ip();
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
         $device = device_label($ua);
         $network = network_prefix($ip);

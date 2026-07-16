@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/functions.php';
+require_once __DIR__ . '/client_ip.php';
 
 // Minify HTML output site-wide (the callback ignores non-HTML responses).
 // Define SKIP_HTML_MINIFY before including auth.php to opt a page out.
@@ -48,7 +49,7 @@ if (empty($_SESSION['user_id']) && !empty($_COOKIE['remember_token'])) {
 if (!defined('SKIP_IP_BLOCK_CHECK')) {
     try {
         $ipStmt = db()->prepare('SELECT 1 FROM ip_blocks WHERE ip_address = ?');
-        $ipStmt->execute([$_SERVER['REMOTE_ADDR'] ?? '']);
+        $ipStmt->execute([client_ip()]);
         if ($ipStmt->fetchColumn()) {
             http_response_code(403);
             exit('Access denied.');
@@ -170,7 +171,7 @@ function login_user(int $userId, bool $remember = false): void
     $_SESSION['session_version'] = (int) ($stmt->fetchColumn() ?: 1);
 
     db()->prepare('INSERT INTO login_history (user_id, ip_address, user_agent) VALUES (?, ?, ?)')
-        ->execute([$userId, $_SERVER['REMOTE_ADDR'] ?? null, mb_substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255)]);
+        ->execute([$userId, client_ip() ?: null, mb_substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255)]);
 
     // Hooked here rather than in each login page so every auth path — password,
     // 2FA, OTP, passkey, social — is covered by one implementation.
@@ -248,7 +249,7 @@ function verify_csrf(): void
 function rate_limit_ip(string $key, int $maxAttempts, int $windowSeconds): bool
 {
     require_once __DIR__ . '/api_auth.php';
-    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $ip = client_ip() ?: 'unknown';
     return api_rate_limit_bucket($key . '_' . substr(hash('sha256', $ip), 0, 40), $maxAttempts, $windowSeconds);
 }
 

@@ -46,6 +46,43 @@ if (is_dir($uploadsDir)) {
 ?>
 <h1 class="text-2xl font-bold mb-4">Site health</h1>
 
+<?php
+require_once __DIR__ . '/../includes/client_ip.php';
+$seenIp = client_ip();
+$rawRemote = $_SERVER['REMOTE_ADDR'] ?? '';
+$hasXff = !empty($_SERVER['HTTP_X_FORWARDED_FOR']);
+$trustedList = trim(setting('trusted_proxies', ''));
+$viaProxy = from_trusted_proxy();
+?>
+<div class="bg-white border rounded-lg p-4 mb-6">
+  <h2 class="text-sm font-semibold mb-1">🌐 Visitor IP detection</h2>
+  <p class="text-xs text-slate-500 mb-3">
+    IP blocking, per-IP rate limiting, login alerts and the security dashboard all depend on seeing the
+    <em>visitor's</em> address. This site serves through Hostinger's CDN, so it is worth confirming the origin
+    is not just seeing the CDN.
+  </p>
+  <table class="w-full text-xs">
+    <tbody>
+      <tr class="border-b"><td class="py-1.5 text-slate-500">Your IP as this server sees it</td><td class="py-1.5 font-mono font-medium"><?= e($seenIp ?: '(none)') ?></td></tr>
+      <tr class="border-b"><td class="py-1.5 text-slate-500">Direct peer (REMOTE_ADDR)</td><td class="py-1.5 font-mono"><?= e($rawRemote ?: '(none)') ?></td></tr>
+      <tr class="border-b"><td class="py-1.5 text-slate-500">X-Forwarded-For present</td><td class="py-1.5"><?= $hasXff ? 'yes' : 'no' ?></td></tr>
+      <tr class="border-b"><td class="py-1.5 text-slate-500">Trusted proxies configured</td><td class="py-1.5"><?= $trustedList !== '' ? e($trustedList) : '— none (forwarded headers ignored)' ?></td></tr>
+      <tr><td class="py-1.5 text-slate-500">Reading forwarded header</td><td class="py-1.5"><?= $viaProxy ? 'yes — peer is a trusted proxy' : 'no' ?></td></tr>
+    </tbody>
+  </table>
+  <div class="mt-3 text-xs rounded px-3 py-2 <?= $hasXff && !$viaProxy ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-slate-50 border text-slate-600' ?>">
+    <strong>How to check:</strong> open
+    <a href="https://api.ipify.org" target="_blank" rel="noopener" class="text-indigo-600">api.ipify.org</a>
+    in this browser. If it matches <span class="font-mono"><?= e($seenIp ?: '—') ?></span> above, IP detection is correct and nothing needs changing.
+    <?php if ($hasXff && !$viaProxy): ?>
+      <br><br>If it does <em>not</em> match, the CDN is forwarding your real IP in a header this site is deliberately ignoring
+      (ignoring it is the safe default — trusting that header blindly lets anyone forge an IP and walk through IP bans and rate limits).
+      To use it safely, set <code>trusted_proxies</code> in Settings to the CDN's address — currently <span class="font-mono"><?= e($rawRemote) ?></span> —
+      or its published CIDR range.
+    <?php endif; ?>
+  </div>
+</div>
+
 <div class="grid sm:grid-cols-3 gap-4 mb-6">
   <div class="bg-white border rounded-lg p-4">
     <div class="text-xs text-slate-500">Database size</div>
