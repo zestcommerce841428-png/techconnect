@@ -78,6 +78,7 @@ $badgeJobs = $navBadge("SELECT COUNT(*) FROM jobs WHERE status = 'pending'");
       <a href="/admin/payment_settings" class="block px-2 py-1.5 rounded hover:bg-slate-800">Payment Settings</a>
       <a href="/admin/currencies" class="block px-2 py-1.5 rounded hover:bg-slate-800">Currencies</a>
       <a href="/admin/social_login_settings" class="block px-2 py-1.5 rounded hover:bg-slate-800">Social Login</a>
+      <a href="/admin/storage_settings" class="block px-2 py-1.5 rounded hover:bg-slate-800">☁️ Storage</a>
       <a href="/admin/integrations" class="block px-2 py-1.5 rounded hover:bg-slate-800">Integrations</a>
       <a href="/admin/webhooks" class="block px-2 py-1.5 rounded hover:bg-slate-800">Webhooks</a>
       <a href="/admin/expert_payouts" class="block px-2 py-1.5 rounded hover:bg-slate-800">Expert Payouts</a>

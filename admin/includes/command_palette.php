@@ -45,6 +45,7 @@ $paletteItems = [
     ['Payment Settings', '/admin/payment_settings', 'stripe razorpay paypal gateway', true],
     ['Currencies', '/admin/currencies', 'money exchange rates', true],
     ['Social Login', '/admin/social_login_settings', 'oauth google facebook', true],
+    ['Storage', '/admin/storage_settings', 's3 r2 cloudflare aws bucket cdn uploads media', true],
     ['Integrations', '/admin/integrations', 'telegram tawk api', true],
     ['Webhooks', '/admin/webhooks', 'events callbacks', true],
     ['Expert Payouts', '/admin/expert_payouts', 'money consultants', true],

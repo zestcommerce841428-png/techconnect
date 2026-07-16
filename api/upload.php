@@ -54,22 +54,19 @@ if (!isset($allowed[$mime])) {
 }
 
 $ext = $allowed[$mime];
-$subdir = date('Y') . '/' . date('m');
-$uploadRoot = __DIR__ . '/../uploads/' . $subdir;
-if (!is_dir($uploadRoot)) {
-    mkdir($uploadRoot, 0755, true);
-}
+$storagePath = date('Y') . '/' . date('m') . '/' . bin2hex(random_bytes(16)) . '.' . $ext;
 
-$filename = bin2hex(random_bytes(16)) . '.' . $ext;
-$destPath = $uploadRoot . '/' . $filename;
-
-if (!move_uploaded_file($file['tmp_name'], $destPath)) {
+// Routed through the storage abstraction so the same upload works on local disk
+// or any S3-compatible bucket, decided by admin settings rather than by code.
+require_once __DIR__ . '/../includes/storage/storage.php';
+try {
+    $publicPath = storage()->put($storagePath, (string) file_get_contents($file['tmp_name']), $mime);
+} catch (Throwable $e) {
+    error_log('upload failed: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['error' => 'Failed to save file.']);
+    echo json_encode(['error' => 'Failed to save file. Please try again.']);
     exit;
 }
-
-$publicPath = '/uploads/' . $subdir . '/' . $filename;
 
 $pdo = db();
 $pdo->prepare('INSERT INTO uploads (user_id, path, original_name, mime, size) VALUES (?, ?, ?, ?, ?)')
