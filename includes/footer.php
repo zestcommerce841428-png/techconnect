@@ -34,6 +34,7 @@ $tawkWidgetId = setting('tawk_widget_id');
       <span>&copy; <?= date('Y') ?> <?= e($siteName ?? SITE_NAME) ?></span>
       <nav class="flex flex-wrap gap-4">
         <a href="/about" class="hover:underline">About</a>
+        <a href="/features" class="hover:underline">Features</a>
         <a href="/blog" class="hover:underline">Blog</a>
         <a href="/contact" class="hover:underline">Contact</a>
         <a href="/feedback" class="hover:underline">Feedback</a>
