@@ -21,7 +21,18 @@ function category_section(int $sortOrder): string
         $sortOrder < 1300 => 'Business Types',
         $sortOrder < 1400 => 'Courses & Careers',
         $sortOrder < 1500 => 'Banking & Investments',
-        default => 'Everyday Life',
+        $sortOrder < 1600 => 'Everyday Life',
+        $sortOrder < 1700 => 'Cities',
+        $sortOrder < 1800 => 'Programming & Frameworks',
+        $sortOrder < 1850 => 'School & College Subjects',
+        $sortOrder < 1900 => 'Health Specialities',
+        $sortOrder < 1950 => 'Food & Cooking',
+        $sortOrder < 2000 => 'Sports',
+        $sortOrder < 2100 => 'Entertainment',
+        $sortOrder < 2200 => 'Career Fields',
+        $sortOrder < 2300 => 'Home Services',
+        $sortOrder < 2400 => 'Community & Society',
+        default => 'Selling & Online Business',
     };
 }
 
