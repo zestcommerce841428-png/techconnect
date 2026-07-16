@@ -62,8 +62,10 @@ $rows = db()->query(
 )->fetchAll();
 
 $sections = [];
+$activeCount = 0;
 foreach ($rows as $c) {
     $sections[category_section((int) $c['sort_order'])][] = $c;
+    if ((int) $c['question_count'] > 0) $activeCount++;
 }
 
 $pageTitle = 'Browse all topics — ' . SITE_NAME;
@@ -96,9 +98,16 @@ require __DIR__ . '/includes/header.php';
       <h1 class="text-2xl font-bold">Browse all topics</h1>
       <p class="text-sm text-slate-500 mt-1"><?= count($rows) ?> topics — find your area and start asking or answering.</p>
     </div>
-    <label for="cat-search" class="sr-only">Search topics</label>
-    <input id="cat-search" type="search" placeholder="Search topics… e.g. GST, cricket, resume"
-           class="w-full sm:w-72 border rounded-lg px-3 py-2 text-sm" autocomplete="off">
+    <div class="flex flex-wrap items-center gap-2">
+      <label for="cat-search" class="sr-only">Search topics</label>
+      <input id="cat-search" type="search" placeholder="Search topics… e.g. GST, cricket, resume"
+             class="w-full sm:w-64 border rounded-lg px-3 py-2 text-sm" autocomplete="off">
+      <?php if ($activeCount > 0 && $activeCount < count($rows)): ?>
+        <label class="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap cursor-pointer">
+          <input type="checkbox" id="cat-only-active"> Only topics with questions (<?= $activeCount ?>)
+        </label>
+      <?php endif; ?>
+    </div>
   </div>
 
   <?php foreach ($sections as $label => $cats): ?>
@@ -106,7 +115,7 @@ require __DIR__ . '/includes/header.php';
       <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-2"><?= e($label) ?></h2>
       <div class="cg">
         <?php foreach ($cats as $c): $n = (int) $c['question_count']; ?>
-          <a href="/c/<?= e($c['slug']) ?>" class="cc"><span class="ci"><?= e($c['icon'] ?? '📁') ?></span><span class="cb"><span class="cn"><?= e($c['name']) ?></span><span class="cd"><?= e($c['description'] ?? '') ?></span><?php if ($n): ?><span class="cq"><?= $n ?> question<?= $n === 1 ? '' : 's' ?></span><?php endif; ?></span></a>
+          <a href="/c/<?= e($c['slug']) ?>" class="cc"<?= $n ? ' data-has-q' : '' ?>><span class="ci"><?= e($c['icon'] ?? '📁') ?></span><span class="cb"><span class="cn"><?= e($c['name']) ?></span><span class="cd"><?= e($c['description'] ?? '') ?></span><?php if ($n): ?><span class="cq"><?= $n ?> question<?= $n === 1 ? '' : 's' ?></span><?php endif; ?></span></a>
         <?php endforeach; ?>
       </div>
     </section>
@@ -126,11 +135,14 @@ require __DIR__ . '/includes/header.php';
   });
   var sections = Array.prototype.slice.call(document.querySelectorAll('[data-cat-section]'));
   var empty = document.getElementById('cat-no-results');
-  input.addEventListener('input', function () {
+  var onlyActive = document.getElementById('cat-only-active');
+
+  function apply() {
     var q = input.value.trim().toLowerCase();
+    var activeOnly = onlyActive && onlyActive.checked;
     var any = false;
     cards.forEach(function (card) {
-      var show = !q || card.text.indexOf(q) !== -1;
+      var show = (!q || card.text.indexOf(q) !== -1) && (!activeOnly || card.el.hasAttribute('data-has-q'));
       card.el.classList.toggle('hidden', !show);
       if (show) any = true;
     });
@@ -139,7 +151,10 @@ require __DIR__ . '/includes/header.php';
       sec.classList.toggle('hidden', !visible);
     });
     empty.classList.toggle('hidden', any);
-  });
+  }
+
+  input.addEventListener('input', apply);
+  if (onlyActive) onlyActive.addEventListener('change', apply);
 })();
 </script>
 <?php require __DIR__ . '/includes/footer.php'; ?>
