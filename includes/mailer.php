@@ -19,6 +19,21 @@ function user_email_pref(int $userId, string $kind): bool
     return (bool) $row[$column];
 }
 
+/** Readable plain-text fallback from an HTML email body. */
+function html_to_plain_text(string $html): string
+{
+    // Drop invisible scaffolding (preheader spacer, head) before flattening.
+    $text = preg_replace('#<(head|style|script)\b[^>]*>.*?</\1>#si', '', $html) ?? $html;
+    $text = preg_replace('#<div style="display:none.*?</div>#si', '', $text) ?? $text;
+    // Keep link targets visible, since the text part has no clickable anchors.
+    $text = preg_replace('#<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>#si', '$2 ($1)', $text) ?? $text;
+    $text = preg_replace('#<(br|/p|/h[1-6]|/tr|/div)\s*/?>#i', "\n", $text) ?? $text;
+    $text = html_entity_decode(strip_tags($text), ENT_QUOTES, 'UTF-8');
+    $text = preg_replace('/[ \t]+/', ' ', $text) ?? $text;
+    $text = preg_replace('/\n{3,}/', "\n\n", $text) ?? $text;
+    return trim(implode("\n", array_map('trim', explode("\n", $text))));
+}
+
 function send_mail(string $toEmail, string $toName, string $subject, string $htmlBody, ?string $replyTo = null): bool
 {
     $mail = new PHPMailer(true);
@@ -40,6 +55,10 @@ function send_mail(string $toEmail, string $toName, string $subject, string $htm
         $mail->isHTML(true);
         $mail->Subject = $subject;
         $mail->Body = $htmlBody;
+        // HTML-only mail scores badly with spam filters and breaks plain-text
+        // readers; derive a text part from the HTML rather than requiring every
+        // caller to write one.
+        $mail->AltBody = html_to_plain_text($htmlBody);
         $mail->send();
         return true;
     } catch (Exception $e) {

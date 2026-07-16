@@ -16,9 +16,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $upd = db()->prepare('UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?');
             // Store only a hash — a leaked/backed-up users table must not contain usable reset links.
             $upd->execute([hash('sha256', $token), $expires, $row['id']]);
-            $link = SITE_URL . '/reset_password.php?token=' . $token;
+            $link = SITE_URL . '/reset_password?token=' . $token;
+            require_once __DIR__ . '/includes/email_template.php';
             send_mail($email, $row['username'], 'Reset your ' . SITE_NAME . ' password',
-                '<p>Click the link below to reset your password (valid 1 hour):</p><p><a href="' . e($link) . '">' . e($link) . '</a></p>');
+                email_layout('Reset your password', [
+                    email_paragraph('Hi ' . $row['username'] . ','),
+                    email_paragraph('Click the button below to choose a new password. This link is valid for 1 hour and can be used once.'),
+                    email_button('Reset my password', $link),
+                    email_alert('If you did not request this, you can safely ignore this email — your password will not change.', 'info'),
+                ], 'Reset your ' . SITE_NAME . ' password (link valid 1 hour)'));
         }
     }
     $sent = true; // Always show the same message to avoid leaking which emails are registered

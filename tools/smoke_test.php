@@ -42,6 +42,7 @@ $routes = [
     '/login' => [200],
     '/register' => [200],
     '/forgot_password' => [200],
+    '/login_otp' => [200],
     '/api_docs' => [200],
     '/status' => [200],
     '/rss' => [200],

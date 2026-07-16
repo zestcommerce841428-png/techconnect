@@ -72,6 +72,9 @@ require __DIR__ . '/includes/header.php';
     <button type="button" data-passkey-login class="w-full flex items-center justify-center gap-2 border rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 mb-3">
       🔑 Sign in with a passkey
     </button>
+    <a href="/login_otp" class="w-full flex items-center justify-center gap-2 border rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 mb-3">
+      ✉️ Email me a sign-in code
+    </a>
     <p data-passkey-status class="text-xs text-center text-slate-500 mb-4"></p>
     <div class="flex items-center gap-3 text-xs text-slate-400 mb-4">
       <span class="flex-1 border-t border-slate-200 dark:border-slate-700"></span>

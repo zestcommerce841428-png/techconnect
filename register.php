@@ -60,9 +60,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                        ON DUPLICATE KEY UPDATE token = VALUES(token), expires_at = VALUES(expires_at)')
             ->execute([$newUserId, $token]);
         $link = SITE_URL . '/verify_email?token=' . $token;
+        require_once __DIR__ . '/includes/email_template.php';
         @send_mail($email, $username, 'Verify your email — ' . SITE_NAME,
-            '<p>Hi ' . htmlspecialchars($username) . ',</p><p>Please confirm your email address:</p>'
-            . '<p><a href="' . htmlspecialchars($link) . '">Verify my email</a></p><p>This link expires in 48 hours.</p>');
+            email_layout('Welcome to ' . setting('site_name', SITE_NAME) . '!', [
+                email_paragraph('Hi ' . $username . ','),
+                email_paragraph('Thanks for joining. Confirm your email address to unlock everything — asking questions, posting answers and earning reputation.'),
+                email_button('Verify my email', $link),
+                email_muted('This link expires in 48 hours.'),
+            ], 'Confirm your email to finish setting up your account'));
 
         require_once __DIR__ . '/includes/webhooks.php';
         fire_webhook('user.registered', ['id' => $newUserId, 'username' => $username]);
