@@ -55,6 +55,13 @@ function render_markdown(string $source): string
             continue;
         }
 
+        // A video URL alone on a line becomes a player; inside a sentence it
+        // stays an ordinary link.
+        if ($embed = md_video_embed($line)) {
+            $html[] = $embed;
+            continue;
+        }
+
         $html[] = '<p>' . md_inline($line) . '</p>';
     }
     if ($inList) { $html[] = '</ul>'; }
@@ -63,6 +70,41 @@ function render_markdown(string $source): string
     }
 
     return implode("\n", array_filter($html, fn($l) => $l !== ''));
+}
+
+/**
+ * Renders a bare video URL on its own line as a responsive embed, or null if the
+ * line is not a recognised video link.
+ *
+ * Only the video ID is ever extracted, with a strict charset, and the iframe src
+ * is then rebuilt from a hardcoded template. The author's URL never reaches the
+ * src attribute, so no crafted "youtube.com..." string can smuggle anything in.
+ * youtube-nocookie.com is used so embeds do not set tracking cookies on visitors
+ * (which also keeps the cookie banner honest).
+ */
+function md_video_embed(string $line): ?string
+{
+    $line = trim($line);
+    $patterns = [
+        // youtu.be/ID · youtube.com/watch?v=ID · /embed/ID · /shorts/ID · /live/ID
+        '~^https?://(?:www\.)?(?:youtube\.com/(?:watch\?(?:[\w=&;-]*&)?v=|embed/|shorts/|live/)|youtu\.be/)([A-Za-z0-9_-]{11})(?:[?&#][^\s]*)?$~i'
+            => 'https://www.youtube-nocookie.com/embed/%s',
+        // vimeo.com/123456789
+        '~^https?://(?:www\.)?vimeo\.com/(\d{6,12})(?:[?#][^\s]*)?$~i'
+            => 'https://player.vimeo.com/video/%s',
+    ];
+    foreach ($patterns as $re => $template) {
+        if (preg_match($re, $line, $m)) {
+            $src = sprintf($template, $m[1]);
+            // 16:9 without aspect-ratio utilities, so it works in email/print too.
+            return '<div class="relative w-full my-4 rounded-lg overflow-hidden bg-slate-900" style="padding-top:56.25%">'
+                . '<iframe src="' . e($src) . '" title="Embedded video" loading="lazy"'
+                . ' class="absolute inset-0 w-full h-full" frameborder="0"'
+                . ' allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"'
+                . ' referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>';
+        }
+    }
+    return null;
 }
 
 /**
