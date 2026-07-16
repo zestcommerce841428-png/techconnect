@@ -111,6 +111,11 @@ function login_user(int $userId, bool $remember = false): void
     db()->prepare('INSERT INTO login_history (user_id, ip_address, user_agent) VALUES (?, ?, ?)')
         ->execute([$userId, $_SERVER['REMOTE_ADDR'] ?? null, mb_substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255)]);
 
+    // Hooked here rather than in each login page so every auth path — password,
+    // 2FA, OTP, passkey, social — is covered by one implementation.
+    require_once __DIR__ . '/login_alert.php';
+    maybe_send_login_alert($userId);
+
     if ($remember) {
         set_remember_cookie($userId);
     }

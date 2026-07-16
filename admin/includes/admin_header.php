@@ -29,7 +29,14 @@ $badgeJobs = $navBadge("SELECT COUNT(*) FROM jobs WHERE status = 'pending'");
 <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col md:flex-row">
 <aside class="w-full md:w-56 bg-slate-900 text-white p-4 shrink-0">
   <div class="flex items-center justify-between md:block">
-    <div class="font-bold md:mb-6"><?= e(SITE_NAME) ?> Admin</div>
+    <div class="md:mb-6">
+      <div class="font-bold"><?= e(SITE_NAME) ?> Admin</div>
+      <button type="button" data-cmdk-open
+              class="hidden md:flex mt-3 w-full items-center justify-between gap-2 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg px-2.5 py-2">
+        <span>🔍 Jump to…</span>
+        <kbd class="font-sans text-[10px] bg-slate-700 rounded px-1.5 py-0.5">Ctrl K</kbd>
+      </button>
+    </div>
     <button type="button" onclick="document.getElementById('admin-nav').classList.toggle('hidden')" class="md:hidden p-1.5 rounded hover:bg-slate-800" aria-label="Toggle admin menu">☰</button>
   </div>
   <nav id="admin-nav" class="hidden md:block space-y-1 text-sm mt-3 md:mt-0">
