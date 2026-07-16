@@ -5,6 +5,26 @@ require_once __DIR__ . '/includes/trusted_device.php';
 
 if (current_user()) redirect('/');
 
+// Migration 030 not applied: say so honestly and point at password sign-in,
+// rather than accepting an email and silently failing to send anything.
+if (!otp_available()) {
+    $pageTitle = 'Sign in with a code — ' . SITE_NAME;
+    require __DIR__ . '/includes/header.php';
+    ?>
+    <div class="min-h-[60vh] flex items-center justify-center">
+      <div class="w-full max-w-sm card p-7 text-center">
+        <div class="text-3xl mb-2">✉️</div>
+        <h1 class="text-xl font-semibold mb-2">Code sign-in isn't available yet</h1>
+        <p class="text-sm text-slate-500 mb-5">This sign-in method hasn't been switched on for this site yet. You can sign in with your password instead.</p>
+        <a href="/login" class="block w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg px-3 py-2.5">Sign in with a password</a>
+        <a href="/forgot_password" class="block mt-3 text-sm text-indigo-600">Forgot your password?</a>
+      </div>
+    </div>
+    <?php
+    require __DIR__ . '/includes/footer.php';
+    exit;
+}
+
 $errors = [];
 $stage = !empty($_SESSION['otp_user_id']) ? 'verify' : 'request';
 $sentTo = $_SESSION['otp_email_masked'] ?? '';

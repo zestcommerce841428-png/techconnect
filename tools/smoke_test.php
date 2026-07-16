@@ -42,6 +42,8 @@ $routes = [
     '/login' => [200],
     '/register' => [200],
     '/forgot_password' => [200],
+    // Must stay 200 whether or not migration 030 has been applied: before it,
+    // the page has to disable itself cleanly rather than 500 on a real user.
     '/login_otp' => [200],
     '/api_docs' => [200],
     '/status' => [200],
