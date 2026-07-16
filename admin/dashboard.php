@@ -135,6 +135,45 @@ try {
   </div>
 </div>
 
+<?php
+// Quick-links grid: the admin panel has 40+ tools, and the sidebar buries the
+// ones used daily. Moderator-only accounts never see admin-restricted cards.
+$quickLinks = [
+    ['Users', '👥', '/admin/users', 'Roles, bans, verification', true],
+    ['Moderation', '🛡️', '/admin/moderation', 'Reported content queue', true],
+    ['Feedback', '📝', '/admin/feedback', 'Bug reports & ideas', true],
+    ['Import Questions', '📥', '/admin/import_questions', 'Bulk CSV seeding', false],
+    ['Categories', '🗂️', '/admin/categories', 'Topics & bulk visibility', true],
+    ['Tags', '🏷️', '/admin/tags', 'Tag catalog', true],
+    ['Blog', '✍️', '/admin/blog', 'Posts & scheduling', true],
+    ['Pages', '📄', '/admin/pages', 'CMS pages', true],
+    ['Analytics', '📊', '/admin/analytics', 'Traffic & engagement', true],
+    ['Experts', '🎓', '/admin/experts', 'Applications & approvals', true],
+    ['Jobs', '💼', '/admin/jobs', 'Job board moderation', true],
+    ['Orders', '💳', '/admin/orders', 'Payments & invoices', false],
+    ['Site Health', '🩺', '/admin/site_health', 'System checks', false],
+    ['Audit Log', '📋', '/admin/audit_log', 'Who changed what', false],
+    ['Branding', '🎨', '/admin/site_settings', 'Name, logo, tagline', false],
+    ['Settings', '⚙️', '/admin/settings', 'Global configuration', false],
+];
+$isAdmin = $admin['role'] === 'admin';
+?>
+<div class="bg-white border rounded-lg p-4 mb-6">
+  <h2 class="text-sm font-semibold mb-3">Quick links</h2>
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+    <?php foreach ($quickLinks as [$label, $icon, $href, $desc, $modOk]): ?>
+      <?php if (!$modOk && !$isAdmin) continue; ?>
+      <a href="<?= e($href) ?>" class="group flex items-start gap-3 border rounded-lg p-3 hover:border-indigo-400 hover:bg-indigo-50/50 transition">
+        <span class="text-xl leading-none mt-0.5"><?= $icon ?></span>
+        <span class="min-w-0">
+          <span class="block text-sm font-medium group-hover:text-indigo-700"><?= e($label) ?></span>
+          <span class="block text-xs text-slate-500 truncate"><?= e($desc) ?></span>
+        </span>
+      </a>
+    <?php endforeach; ?>
+  </div>
+</div>
+
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
   <div class="bg-white border rounded-lg">
     <div class="px-4 py-3 border-b flex items-center justify-between">

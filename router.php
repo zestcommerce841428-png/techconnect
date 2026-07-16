@@ -16,6 +16,7 @@ $routes = [
     '#^/tag/([a-zA-Z0-9-]+)/?$#' => ['questions.php', 'tag'],
     '#^/u/([a-zA-Z0-9_-]+)/?$#' => ['profile.php', 'username'],
     '#^/go/([a-zA-Z0-9]+)/?$#' => ['go.php', 'slug'],
+    '#^/s/([a-z2-9]+)/?$#' => ['s.php', 'code'],
     '#^/g/([a-zA-Z0-9-]+)/?$#' => ['group.php', 'slug'],
 ];
 

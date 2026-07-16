@@ -51,7 +51,15 @@ $routes = [
     '/offline.html' => [200],
     '/sw.js' => [200],
     '/.well-known/security.txt' => [200],
-    '/this-page-should-not-exist-xyz' => [404, 500],
+    '/this-page-should-not-exist-xyz' => [404],
+    // Regression: "/<existing-page>/<anything>" must 404, not 500. The generic
+    // extensionless fallback used to test %{REQUEST_FILENAME}.php, which matched
+    // the "/login" prefix and rewrote to the non-existent "/login/foo.php".
+    '/login/foo' => [404],
+    '/contact/foo' => [404],
+    '/blog/x_1' => [404],
+    '/s/abc1' => [404],
+    '/admin/dashboard/x' => [404],
     // Auth-gated: guests MUST be redirected.
     '/ask' => [302],
     '/inbox' => [302],

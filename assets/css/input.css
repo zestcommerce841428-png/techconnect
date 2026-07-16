@@ -84,6 +84,7 @@
     @apply transition-colors duration-150;
   }
 
+
   :focus-visible {
     @apply outline-none ring-2 ring-indigo-500/70 ring-offset-1;
   }
@@ -180,4 +181,27 @@
   .dark .prose :where(h1,h2,h3,h4,strong,code) { color: theme('colors.slate.100'); }
   .dark .prose :where(a) { color: theme('colors.indigo.400'); }
   .dark .prose :where(blockquote) { color: theme('colors.slate.400'); border-color: theme('colors.slate.600'); }
+}
+
+/*
+ * ---------- House style: links are never underlined ----------
+ * Links are distinguished by colour + hover state instead. ~150 templates use
+ * the `hover:underline` utility and markdown content underlines links via the
+ * typography plugin; rather than edit every template, neutralise both here.
+ *
+ * Tailwind emits its utilities AFTER this file's unlayered CSS, so source order
+ * does not save us — each selector below deliberately out-specifies its target:
+ *   a.hover\:underline:hover (0,2,1)  beats  .hover\:underline:hover (0,2,0)
+ *   .prose a                 (0,1,1)  beats  .prose :where(a)        (0,1,0)
+ * print.css intentionally re-enables underlines on paper, where colour is lost.
+ */
+a,
+a:hover,
+a:focus,
+a.underline,
+a.hover\:underline:hover,
+a.hover\:underline:focus,
+.prose a,
+.prose a:hover {
+  text-decoration-line: none;
 }

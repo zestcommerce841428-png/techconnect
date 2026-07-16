@@ -413,8 +413,12 @@ $breadcrumbs[] = [$question['title'], SITE_URL . '/q/' . $question['slug']];
     <li aria-hidden="true">›</li>
     <li class="truncate text-slate-700" aria-current="page"><?= e(mb_substr($question['title'], 0, 60)) ?><?= mb_strlen($question['title']) > 60 ? '…' : '' ?></li>
   </ol>
+  <?php
+  require_once __DIR__ . '/includes/short_links.php';
+  $shareUrl = short_url_for('/q/' . $question['slug'], $user['id'] ?? null);
+  ?>
   <button type="button" id="q-share" class="shrink-0 text-xs px-3 py-1.5 rounded-full border bg-white hover:bg-slate-50"
-          data-title="<?= e($question['title']) ?>" data-url="<?= e(SITE_URL . '/q/' . $question['slug']) ?>">🔗 Share</button>
+          data-title="<?= e($question['title']) ?>" data-url="<?= e($shareUrl) ?>">🔗 Share</button>
 </nav>
 <script>
 document.getElementById('q-share').addEventListener('click', function () {

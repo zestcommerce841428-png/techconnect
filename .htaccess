@@ -2,6 +2,13 @@
 Options -Indexes -MultiViews
 ServerSignature Off
 
+# Reject trailing path info (e.g. /login/anything, /contact/foo). Without this the
+# server hands "/login/foo" to login.php as PATH_INFO and the handler errors out,
+# returning a raw 500 where a clean 404 belongs — bad for users and for crawlers,
+# which can invent such URLs from malformed links. Nothing in the app reads
+# PATH_INFO; every route is a rewrite to a query string, so this is safe.
+AcceptPathInfo Off
+
 # Baseline security headers. HSTS is deliberately short (1 day) to start —
 # raise max-age once HTTPS is confirmed stable everywhere.
 <IfModule mod_headers.c>
@@ -85,6 +92,9 @@ ServerSignature Off
     RewriteRule ^go/([a-zA-Z0-9]+)/?$ go.php?slug=$1 [L,QSA]
 
     RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^s/([a-z2-9]+)/?$ s.php?code=$1 [L,QSA]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^checkout/success/?$ checkout_success.php [L,QSA]
 
     RewriteCond %{REQUEST_FILENAME} !-f
@@ -92,9 +102,17 @@ ServerSignature Off
 
     # Generic fallback: allow any page to be requested without ".php"
     # (e.g. /login resolves to login.php) as long as no real file/dir matches.
+    #
+    # The existence check MUST be built from the rule's own capture
+    # (%{DOCUMENT_ROOT}/$1.php) rather than %{REQUEST_FILENAME}.php. For a URL
+    # like "/login/foo" the server resolves REQUEST_FILENAME down to the
+    # existing "login" prefix, so "%{REQUEST_FILENAME}.php" tested login.php,
+    # matched, and the rule then rewrote to "/login/foo.php" — a script that
+    # does not exist, producing a raw 500 instead of a clean 404 for every
+    # "/<existing-page>/<anything>" URL. Testing $1 tests the real target.
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_FILENAME}\.php -f
+    RewriteCond %{DOCUMENT_ROOT}/$1.php -f
     RewriteRule ^(.*)$ $1.php [L,QSA]
 
     RewriteRule ^includes/ - [F,L]
