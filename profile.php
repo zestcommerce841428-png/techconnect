@@ -156,6 +156,54 @@ require __DIR__ . '/includes/header.php';
       <?php endif; ?>
     </div>
 
+    <?php
+    // 26-week contribution heatmap: questions + answers per day.
+    $heatDays = 182;
+    $heatStart = date('Y-m-d', strtotime('-' . ($heatDays - 1) . ' days'));
+    $heat = array_fill_keys(array_map(fn($i) => date('Y-m-d', strtotime("-$i days")), range($heatDays - 1, 0)), 0);
+    try {
+        foreach ([
+            "SELECT DATE(created_at) d, COUNT(*) n FROM questions WHERE user_id = ? AND status <> 'draft' AND created_at >= ? GROUP BY d",
+            'SELECT DATE(created_at) d, COUNT(*) n FROM answers WHERE user_id = ? AND created_at >= ? GROUP BY d',
+        ] as $sql) {
+            $hs = $pdo->prepare($sql);
+            $hs->execute([$targetId, $heatStart]);
+            foreach ($hs->fetchAll() as $r) {
+                if (isset($heat[$r['d']])) $heat[$r['d']] += (int) $r['n'];
+            }
+        }
+    } catch (Throwable $e) {
+    }
+    $heatTotal = array_sum($heat);
+    // Sequential single-hue steps (indigo, light -> dark).
+    $heatColor = fn(int $n): string => $n === 0 ? '#e2e8f0' : ($n === 1 ? '#c7d2fe' : ($n <= 3 ? '#818cf8' : '#4f46e5'));
+    ?>
+    <?php if ($heatTotal > 0): ?>
+      <div class="bg-white border rounded-lg p-4 mt-4">
+        <h2 class="font-semibold text-sm mb-2"><?= number_format($heatTotal) ?> contribution<?= $heatTotal === 1 ? '' : 's' ?> in the last 6 months</h2>
+        <div class="overflow-x-auto">
+          <div class="flex gap-[3px]" role="img" aria-label="Daily contribution activity for the last 26 weeks">
+            <?php $dates = array_keys($heat); for ($w = 0; $w < 26; $w++): ?>
+              <div class="flex flex-col gap-[3px]">
+                <?php for ($d = 0; $d < 7; $d++): $idx = $w * 7 + $d; if (!isset($dates[$idx])) break;
+                      $date = $dates[$idx]; $n = $heat[$date]; ?>
+                  <div class="w-2.5 h-2.5 rounded-[2px]" style="background:<?= $heatColor($n) ?>"
+                       title="<?= e(date('j M Y', strtotime($date))) ?>: <?= $n ?> contribution<?= $n === 1 ? '' : 's' ?>"></div>
+                <?php endfor; ?>
+              </div>
+            <?php endfor; ?>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 mt-2 text-[10px] text-slate-400">
+          Less
+          <?php foreach ([0, 1, 2, 4] as $lvl): ?>
+            <span class="w-2.5 h-2.5 rounded-[2px] inline-block" style="background:<?= $heatColor($lvl) ?>"></span>
+          <?php endforeach; ?>
+          More
+        </div>
+      </div>
+    <?php endif; ?>
+
     <?php if ($isOwn): ?>
       <div class="bg-white border rounded-lg p-4 mt-4 flex flex-wrap gap-3 text-sm">
         <a href="/invoices" class="text-indigo-600 hover:underline">Invoices</a>

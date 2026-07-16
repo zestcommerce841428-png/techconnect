@@ -45,6 +45,7 @@ $tawkWidgetId = setting('tawk_widget_id');
         <a href="/changelog" class="hover:underline">Changelog</a>
         <a href="/roadmap" class="hover:underline">Roadmap</a>
         <a href="/categories" class="hover:underline">Topics</a>
+        <a href="/tags" class="hover:underline">Tags</a>
         <a href="/collections" class="hover:underline">Collections</a>
         <a href="/api_docs" class="hover:underline">API</a>
         <a href="/stats" class="hover:underline">Stats</a>

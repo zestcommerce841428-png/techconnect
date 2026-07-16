@@ -13,7 +13,7 @@ $blogPosts = $pdo->query("SELECT slug, updated_at FROM blog_posts WHERE status =
 echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
 
-$staticPages = ['/', '/questions', '/jobs', '/about', '/contact', '/blog', '/categories', '/stats', '/leaderboard', '/experts', '/groups', '/collections', '/faq', '/roadmap', '/changelog', '/feedback', '/guidelines'];
+$staticPages = ['/', '/questions', '/jobs', '/about', '/contact', '/blog', '/categories', '/tags', '/stats', '/leaderboard', '/experts', '/groups', '/collections', '/faq', '/roadmap', '/changelog', '/feedback', '/guidelines'];
 foreach ($staticPages as $path) {
     echo '<url><loc>' . htmlspecialchars(SITE_URL . $path) . '</loc></url>' . "\n";
 }
