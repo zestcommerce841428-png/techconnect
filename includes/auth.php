@@ -2,6 +2,13 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/functions.php';
 
+// Minify HTML output site-wide (the callback ignores non-HTML responses).
+// Define SKIP_HTML_MINIFY before including auth.php to opt a page out.
+if (!defined('SKIP_HTML_MINIFY') && PHP_SAPI !== 'cli') {
+    require_once __DIR__ . '/minify.php';
+    ob_start('minify_html_output');
+}
+
 if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
         'httponly' => true,
