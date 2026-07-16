@@ -3,6 +3,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/NullQrCodeProvider.php';
 require_once __DIR__ . '/includes/logger.php';
 require_once __DIR__ . '/includes/trusted_device.php';
+require_once __DIR__ . '/includes/brute_force.php';
 use RobThree\Auth\TwoFactorAuth;
 
 if (current_user()) redirect('/');
@@ -22,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $secret = $stmt->fetchColumn();
             $tfa = new TwoFactorAuth(new NullQrCodeProvider(), SITE_NAME);
             if ($secret && $tfa->verifyCode($secret, trim($_POST['totp_code']))) {
+                clear_failed_logins((int) $pendingUserId);
                 unset($_SESSION['pending_2fa_user_id']);
                 $rememberMe = !empty($_SESSION['pending_2fa_remember']);
                 unset($_SESSION['pending_2fa_remember']);
@@ -31,6 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 redirect('/');
             }
+            // Second factor is also brute-forceable once a password is known.
+            record_failed_login('user#' . $pendingUserId, (int) $pendingUserId, 'bad_2fa');
             $errors[] = 'Invalid authentication code.';
         }
     } elseif (!rate_limit('login', 8, 300) || !rate_limit_ip('login', 20, 900)) {
@@ -42,7 +46,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = db()->prepare('SELECT id, password_hash, totp_enabled FROM users WHERE username = ? OR email = ?');
         $stmt->execute([$identity, $identity]);
         $row = $stmt->fetch();
-        if ($row && password_verify($password, $row['password_hash'])) {
+
+        $userId = $row ? (int) $row['id'] : null;
+        $lockedMinutes = account_lock_minutes_left($userId);
+
+        if ($lockedMinutes > 0) {
+            // Checked before password verification so a locked account cannot be
+            // probed for password correctness while it is locked.
+            record_failed_login($identity, $userId, 'locked');
+            $errors[] = 'Too many failed attempts. This account is temporarily locked. Try again in '
+                . $lockedMinutes . ' minute' . ($lockedMinutes === 1 ? '' : 's') . ', or reset your password.';
+        } elseif ($row && password_verify($password, $row['password_hash'])) {
+            clear_failed_logins((int) $row['id']);
             if ($row['totp_enabled'] && !is_trusted_device((int) $row['id'])) {
                 $_SESSION['pending_2fa_user_id'] = (int) $row['id'];
                 $_SESSION['pending_2fa_remember'] = $remember;
@@ -53,6 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } else {
             log_warn('failed_login', ['identity' => $identity]);
+            record_failed_login($identity, $userId, $row ? 'bad_password' : 'unknown_user');
+            // Identical message whether or not the account exists — no enumeration.
             $errors[] = 'Incorrect username/email or password.';
         }
     }

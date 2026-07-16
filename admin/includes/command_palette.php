@@ -34,6 +34,7 @@ $paletteItems = [
     ['Groups', '/admin/groups', 'communities', false],
     ['My 2FA', '/admin/security_2fa', 'two factor totp security', false],
     ['Audit Log', '/admin/audit_log', 'history who changed what', true],
+    ['Security', '/admin/security', 'brute force failed logins locked attacks monitoring', true],
     ['IP Blocks', '/admin/ip_blocks', 'ban firewall security', true],
     ['Redirects', '/admin/redirects', 'urls 301 seo', true],
     ['Newsletter', '/admin/newsletter', 'email campaign subscribers', true],

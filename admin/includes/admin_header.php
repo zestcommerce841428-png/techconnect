@@ -64,6 +64,7 @@ $badgeJobs = $navBadge("SELECT COUNT(*) FROM jobs WHERE status = 'pending'");
     <a href="/admin/security_2fa" class="block px-2 py-1.5 rounded hover:bg-slate-800">My 2FA</a>
     <?php if ($admin['role'] === 'admin'): ?>
       <a href="/admin/audit_log" class="block px-2 py-1.5 rounded hover:bg-slate-800">Audit Log</a>
+      <a href="/admin/security" class="block px-2 py-1.5 rounded hover:bg-slate-800">🛡️ Security</a>
       <a href="/admin/ip_blocks" class="block px-2 py-1.5 rounded hover:bg-slate-800">IP Blocks</a>
       <a href="/admin/redirects" class="block px-2 py-1.5 rounded hover:bg-slate-800">Redirects</a>
       <a href="/admin/newsletter" class="block px-2 py-1.5 rounded hover:bg-slate-800">Newsletter</a>
