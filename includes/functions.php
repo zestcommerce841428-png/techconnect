@@ -103,6 +103,28 @@ function setting(string $key, string $default = ''): string
     return ($cache[$key] ?? '') !== '' ? $cache[$key] : $default;
 }
 
+/**
+ * Estimated reading time in minutes.
+ *
+ * 200 wpm is the usual English prose average, but code blocks are scanned far
+ * more slowly than prose, so they are counted at a third of the rate — otherwise
+ * a code-heavy tutorial reports "2 min" and readers stop trusting the number.
+ * Always at least 1.
+ */
+function reading_time(string $markdown): int
+{
+    $codeWords = 0;
+    if (preg_match_all('/```.*?```/s', $markdown, $m)) {
+        foreach ($m[0] as $block) {
+            $codeWords += str_word_count(strip_tags($block));
+        }
+        $markdown = preg_replace('/```.*?```/s', '', $markdown) ?? $markdown;
+    }
+    $proseWords = str_word_count(strip_tags($markdown));
+    $minutes = ($proseWords / 200) + ($codeWords / 65);
+    return max(1, (int) ceil($minutes));
+}
+
 function time_ago(string $datetime): string
 {
     $diff = time() - strtotime($datetime);

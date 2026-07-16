@@ -25,10 +25,45 @@ if (!$post) {
 
 $pdo->prepare('UPDATE blog_posts SET view_count = view_count + 1 WHERE id = ?')->execute([$post['id']]);
 
+// Adjacent posts for internal linking — keeps readers moving through the blog
+// and gives crawlers a path between posts that the index alone does not.
+$prev = $pdo->prepare("SELECT title, slug FROM blog_posts
+    WHERE status = 'published' AND published_at < ?" . sd_filter() . "
+    ORDER BY published_at DESC LIMIT 1");
+$prev->execute([$post['published_at']]);
+$prevPost = $prev->fetch() ?: null;
+
+$next = $pdo->prepare("SELECT title, slug FROM blog_posts
+    WHERE status = 'published' AND published_at > ? AND published_at <= NOW()" . sd_filter() . "
+    ORDER BY published_at ASC LIMIT 1");
+$next->execute([$post['published_at']]);
+$nextPost = $next->fetch() ?: null;
+
+$readMinutes = reading_time($post['body']);
+
 $pageTitle = $post['title'] . ' — ' . SITE_NAME;
 $pageDescription = $post['meta_description'] ?: ($post['excerpt'] ?: mb_substr(strip_tags($post['body']), 0, 160));
+$ogImage = $post['cover_image'] ? (str_starts_with($post['cover_image'], 'http') ? $post['cover_image'] : SITE_URL . $post['cover_image']) : null;
 require __DIR__ . '/includes/header.php';
 ?>
+<script type="application/ld+json"><?= json_encode([
+    '@context' => 'https://schema.org',
+    '@type' => 'BreadcrumbList',
+    'itemListElement' => [
+        ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => SITE_URL . '/'],
+        ['@type' => 'ListItem', 'position' => 2, 'name' => 'Blog', 'item' => SITE_URL . '/blog'],
+        ['@type' => 'ListItem', 'position' => 3, 'name' => $post['title'], 'item' => SITE_URL . '/blog/' . $post['slug']],
+    ],
+], JSON_UNESCAPED_SLASHES) ?></script>
+<nav aria-label="Breadcrumb" class="max-w-2xl mx-auto mb-3">
+  <ol class="flex items-center gap-1.5 text-sm text-slate-500 min-w-0">
+    <li><a href="/" class="hover:underline">Home</a></li>
+    <li aria-hidden="true">›</li>
+    <li><a href="/blog" class="hover:underline">Blog</a></li>
+    <li aria-hidden="true">›</li>
+    <li class="truncate text-slate-700" aria-current="page"><?= e(mb_substr($post['title'], 0, 50)) ?><?= mb_strlen($post['title']) > 50 ? '…' : '' ?></li>
+  </ol>
+</nav>
 <script type="application/ld+json"><?= json_encode([
     '@context' => 'https://schema.org',
     '@type' => 'BlogPosting',
@@ -48,8 +83,35 @@ require __DIR__ . '/includes/header.php';
   <div class="text-xs text-slate-500 mt-1">
     by <?= e($post['username']) ?> &middot; <?= time_ago($post['published_at']) ?>
     <?php if ($post['category_name']): ?>&middot; <?= e($post['category_name']) ?><?php endif; ?>
+    &middot; <?= $readMinutes ?> min read
     &middot; <?= (int) $post['view_count'] ?> views
   </div>
   <div class="mt-4 prose prose-slate max-w-none"><?= render_markdown($post['body']) ?></div>
+
+  <div class="mt-6 pt-4 border-t flex flex-wrap items-center gap-2">
+    <span class="text-xs text-slate-500 mr-1">Share:</span>
+    <?php $bpUrl = urlencode(SITE_URL . '/blog/' . $post['slug']); $bpTitle = urlencode($post['title']); ?>
+    <a href="https://wa.me/?text=<?= $bpTitle ?>%20<?= $bpUrl ?>" target="_blank" rel="noopener" class="text-xs border rounded-full px-3 py-1.5 hover:bg-slate-50">WhatsApp</a>
+    <a href="https://twitter.com/intent/tweet?url=<?= $bpUrl ?>&text=<?= $bpTitle ?>" target="_blank" rel="noopener" class="text-xs border rounded-full px-3 py-1.5 hover:bg-slate-50">X</a>
+    <a href="https://t.me/share/url?url=<?= $bpUrl ?>&text=<?= $bpTitle ?>" target="_blank" rel="noopener" class="text-xs border rounded-full px-3 py-1.5 hover:bg-slate-50">Telegram</a>
+    <a href="https://www.linkedin.com/sharing/share-offsite/?url=<?= $bpUrl ?>" target="_blank" rel="noopener" class="text-xs border rounded-full px-3 py-1.5 hover:bg-slate-50">LinkedIn</a>
+  </div>
 </article>
+
+<?php if ($prevPost || $nextPost): ?>
+  <nav class="max-w-2xl mx-auto mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3" aria-label="More posts">
+    <?php if ($prevPost): ?>
+      <a href="/blog/<?= e($prevPost['slug']) ?>" class="bg-white border rounded-lg p-3 hover:border-indigo-400">
+        <div class="text-xs text-slate-400">← Previous</div>
+        <div class="text-sm font-medium truncate"><?= e($prevPost['title']) ?></div>
+      </a>
+    <?php else: ?><span></span><?php endif; ?>
+    <?php if ($nextPost): ?>
+      <a href="/blog/<?= e($nextPost['slug']) ?>" class="bg-white border rounded-lg p-3 hover:border-indigo-400 sm:text-right">
+        <div class="text-xs text-slate-400">Next →</div>
+        <div class="text-sm font-medium truncate"><?= e($nextPost['title']) ?></div>
+      </a>
+    <?php endif; ?>
+  </nav>
+<?php endif; ?>
 <?php require __DIR__ . '/includes/footer.php'; ?>
