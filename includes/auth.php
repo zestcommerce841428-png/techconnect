@@ -58,6 +58,24 @@ if (!defined('SKIP_IP_BLOCK_CHECK')) {
     }
 }
 
+/**
+ * True once migration 033 has added the account-status columns. Lets this code
+ * deploy before or after the migration in either order.
+ */
+function user_status_ready(): bool
+{
+    static $ready = null;
+    if ($ready === null) {
+        try {
+            db()->query('SELECT status FROM users LIMIT 0');
+            $ready = true;
+        } catch (Throwable $e) {
+            $ready = false;
+        }
+    }
+    return $ready;
+}
+
 function current_user(): ?array
 {
     static $user = null;
@@ -65,9 +83,52 @@ function current_user(): ?array
     if ($loaded) return $user;
     $loaded = true;
     if (empty($_SESSION['user_id'])) return null;
-    $stmt = db()->prepare('SELECT id, username, email, avatar, bio, role, session_version, reputation, location_city, location_country, available_for_hire, is_pro, email_verified_at FROM users WHERE id = ?');
+    // Status is selected here — and enforced below — so that EVERY sign-in route
+    // (password, 2FA, OTP, passkey, OAuth, Telegram, remember-me) is covered by
+    // one check. The old ban only blocked the password path; the other five
+    // walked straight past it.
+    $statusCols = user_status_ready() ? ', status, status_reason, status_until' : '';
+    $stmt = db()->prepare('SELECT id, username, email, avatar, bio, role, session_version, reputation, location_city, location_country, available_for_hire, is_pro, email_verified_at' . $statusCols . ' FROM users WHERE id = ?');
     $stmt->execute([$_SESSION['user_id']]);
     $row = $stmt->fetch() ?: null;
+
+    if ($row && isset($row['status']) && $row['status'] !== 'active') {
+        // A lapsed suspension heals itself rather than needing an admin to
+        // remember to lift it.
+        $expired = $row['status'] === 'suspended'
+            && !empty($row['status_until'])
+            && strtotime($row['status_until']) <= time();
+        if ($expired) {
+            try {
+                db()->prepare("UPDATE users SET status = 'active', status_reason = NULL, status_until = NULL WHERE id = ?")
+                    ->execute([$row['id']]);
+                $row['status'] = 'active';
+            } catch (Throwable $e) {
+                // fall through to the block below rather than granting access
+            }
+        }
+        if ($row['status'] !== 'active') {
+            $msg = $row['status'] === 'banned'
+                ? 'Your account has been permanently suspended.'
+                : 'Your account is temporarily suspended'
+                    . (!empty($row['status_until']) ? ' until ' . date('j M Y, g:i a', strtotime($row['status_until'])) : '')
+                    . '.';
+            if (!empty($row['status_reason'])) {
+                $msg .= ' Reason: ' . $row['status_reason'];
+            }
+            $msg .= ' Contact support if you believe this is a mistake.';
+
+            // logout_user() wipes the session, so the notice has to be written
+            // into a fresh one afterwards or the user is silently signed out
+            // with no explanation.
+            logout_user();
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            flash_set('error', $msg);
+            return null;
+        }
+    }
     // A session created before a "log out other sessions" action carries a stale
     // version number and must be treated as logged out, even though the PHP
     // session cookie itself is still valid.
