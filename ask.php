@@ -179,6 +179,22 @@ require __DIR__ . '/includes/header.php';
       </select>
       <script>
       (function () {
+        // Question templates: a structured skeleton produces far better questions
+        // than a blank box. Never silently overwrite work already typed.
+        var body = document.getElementById('ask-body');
+        if (!body) return;
+        document.querySelectorAll('[data-template]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var tpl = btn.getAttribute('data-template');
+            if (body.value.trim() && !confirm('Replace what you have written with this template?')) return;
+            body.value = tpl;
+            body.focus();
+            body.setSelectionRange(tpl.indexOf('\n\n') + 2, tpl.indexOf('\n\n') + 2);
+            body.dispatchEvent(new Event('input', { bubbles: true })); // refresh preview
+          });
+        });
+      })();
+      (function () {
         // Duplicate detector: as the title is typed, surface existing similar
         // questions via the site's own search endpoint (debounced).
         var title = document.getElementById('ask-title');
@@ -255,7 +271,21 @@ require __DIR__ . '/includes/header.php';
       </div>
     </div>
     <div data-markdown-editor>
-      <label for="ask-body" class="block text-sm font-medium mb-1">Details</label>
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+        <label for="ask-body" class="block text-sm font-medium">Details</label>
+        <div class="flex flex-wrap items-center gap-1.5">
+          <span class="text-xs text-slate-400">Start from a template:</span>
+          <?php foreach ([
+              'problem' => ['🐞 Something is broken', "**What I'm trying to do**\n\n\n**What I expected to happen**\n\n\n**What actually happened** (exact error message if any)\n\n\n**What I've already tried**\n\n\n**Details** (device, app/version, when it started)\n"],
+              'howto' => ['🧭 How do I…', "**What I want to achieve**\n\n\n**My situation right now**\n\n\n**What I've looked at so far**\n\n\n**Constraints** (budget, time, location, skill level)\n"],
+              'choice' => ['⚖️ Which should I choose', "**The options I'm deciding between**\n\n1. \n2. \n\n**How I'll be using it**\n\n\n**What matters most to me** (price, durability, speed…)\n\n\n**Budget / limits**\n"],
+              'process' => ['📋 Process / paperwork', "**What I need to get done**\n\n\n**Where I am in the process**\n\n\n**Documents / info I already have**\n\n\n**Where I'm stuck**\n\n\n**Location** (state/city, since rules vary)\n"],
+          ] as $key => [$label, $body]): ?>
+            <button type="button" data-template="<?= e($body) ?>"
+                    class="text-xs px-2 py-1 rounded-full border bg-white hover:bg-indigo-50 hover:border-indigo-300"><?= $label ?></button>
+          <?php endforeach; ?>
+        </div>
+      </div>
       <?php $textareaId = 'ask-body'; require __DIR__ . '/includes/editor_toolbar.php'; ?>
       <textarea name="body" id="ask-body" rows="8" class="w-full border border-t-0 rounded-b px-3 py-2"
                 placeholder="What have you tried? Include error messages, code, environment details. Markdown supported: **bold**, `code`, ```code blocks```, [links](url)."><?= e($_POST['body'] ?? $draft['body'] ?? '') ?></textarea>
