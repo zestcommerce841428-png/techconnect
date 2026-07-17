@@ -13,7 +13,7 @@ npm run build        # build:css (Tailwind → assets/css/tailwind.min.css) + bu
 npm run watch:css    # Tailwind watcher during development
 php -S localhost:8000 router.php   # local dev server (router.php mirrors .htaccess rewrites; php -S ignores .htaccess)
 php -l <file>        # lint — syntax-lint every touched file
-php tools/smoke_test.php [base-url]   # ~51 route checks; exit 0 = pass. Run before/after every deploy
+php tools/smoke_test.php [base-url]   # ~60 route checks; exit 0 = pass. Run before/after every deploy
 ```
 
 `tools/smoke_test.php` is the closest thing to a test suite: it asserts public pages return 200, auth-gated pages 302 (a 200 there = auth regression), unknown routes 404, and that secret paths (`.env`, `config.php`, `includes/*`, migrations) never leak config markers in their body. Requests are sequential on purpose — parallel bursts trip shared-hosting concurrency limits and produce false 500s. Add a route here whenever you add a page.
@@ -42,6 +42,14 @@ Local setup: copy `config.sample.php` to `config.php`, create a MySQL DB, apply 
 - All secrets in `.env` (gitignored, web-blocked by `.htaccess`); tokens stored hashed (reset tokens, remember-me validators, API keys); password reset bumps `users.session_version` and clears remember tokens.
 - `.htaccess` denies `includes/`, `logs/`, `migrations/`, `cron/`, `vendor/`, dotfiles, `.sql/.log/.md/.lock` files; `uploads/.htaccess` disables script execution. Keep new sensitive paths behind these rules.
 - Forms: `csrf_field()` + optional `honeypot_field()`; abuse-sensitive endpoints add `rate_limit()` (session) and `rate_limit_ip()` (file bucket).
+
+## Working rules (each one is here because it broke something real)
+
+- **Test the feature, not the code.** `/login_otp` shipped broken because the test used an address with no account — which returns early, before the INSERT that was actually failing. Exercise the success path with data that reaches every write.
+- **"Implemented" and "working" are different claims.** The ban prefixed the password hash and was bypassed by passkey, OAuth, Telegram and OTP; stored XSS survived in markdown because links were escaped but never scheme-checked. When a feature already exists, enumerate its entry points and try each one before trusting it. Auditing what looks done has found more real bugs here than writing new pages has.
+- **A feature whose migration has not been applied is inert, not shipped.** Deploying the code is half the job; until the SQL runs in phpMyAdmin the feature does nothing. Guard every new column/table behind a readiness shim (`sd_filter()`, `otp_available()`, `soft_deletes_ready()`) so an unapplied migration degrades instead of 500ing — `includes/footer.php` loads site-wide and one unguarded column reference takes down every page.
+- **Verify claims by measurement, not assertion.** SigV4 was checked against AWS's published test vectors; image optimisation against a real 1.6MB file (→66KB). If a number appears in the UI or in a commit message, a test produced it.
+- **Don't build what can't exist.** Terabox and Mega.nz have no server-side API; a stub named after them is exactly the placeholder this project forbids. Say so and leave it out.
 
 ## Conventions
 
