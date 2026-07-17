@@ -5,14 +5,23 @@ require_once __DIR__ . '/includes/markdown.php';
 $pdo = db();
 $slug = $_GET['slug'] ?? '';
 
+// Preview: staff may open an unpublished post to see exactly how it will render.
+// Gated on role rather than a shareable token — a leaked token is a permanent
+// public backdoor to every draft, and staff are already authenticated here.
+$viewer = current_user();
+$canPreview = $viewer && in_array($viewer['role'], ['admin', 'moderator'], true);
+$statusClause = $canPreview ? '' : " AND p.status = 'published'";
+
 $stmt = $pdo->prepare(
     "SELECT p.*, u.username, bc.name AS category_name
      FROM blog_posts p JOIN users u ON u.id = p.author_id
      LEFT JOIN blog_categories bc ON bc.id = p.blog_category_id
-     WHERE p.slug = ? AND p.status = 'published'" . sd_filter('p') . ""
+     WHERE p.slug = ?" . $statusClause . sd_filter('p')
 );
 $stmt->execute([$slug]);
 $post = $stmt->fetch();
+
+$isPreview = $post && $post['status'] !== 'published';
 
 if (!$post) {
     http_response_code(404);
@@ -23,7 +32,10 @@ if (!$post) {
     exit;
 }
 
-$pdo->prepare('UPDATE blog_posts SET view_count = view_count + 1 WHERE id = ?')->execute([$post['id']]);
+// Previews must not inflate the post's own view count.
+if (!$isPreview) {
+    $pdo->prepare('UPDATE blog_posts SET view_count = view_count + 1 WHERE id = ?')->execute([$post['id']]);
+}
 
 // Adjacent posts for internal linking — keeps readers moving through the blog
 // and gives crawlers a path between posts that the index alone does not.
@@ -44,8 +56,24 @@ $readMinutes = reading_time($post['body']);
 $pageTitle = $post['title'] . ' — ' . SITE_NAME;
 $pageDescription = $post['meta_description'] ?: ($post['excerpt'] ?: mb_substr(strip_tags($post['body']), 0, 160));
 $ogImage = $post['cover_image'] ? (str_starts_with($post['cover_image'], 'http') ? $post['cover_image'] : SITE_URL . $post['cover_image']) : null;
+// An unpublished draft must never reach the index, even though only staff can
+// load it — a stray crawl from a logged-in session would otherwise leak it.
+if ($isPreview) {
+    $pageRobots = 'noindex, nofollow';
+}
 require __DIR__ . '/includes/header.php';
 ?>
+<?php if ($isPreview): ?>
+  <div class="max-w-2xl mx-auto mb-3 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 px-4 py-3 text-sm flex flex-wrap items-center justify-between gap-2">
+    <span>
+      <strong>Preview —</strong> this post is <strong><?= e($post['status']) ?></strong> and is not visible to the public.
+      <?php if (!empty($post['publish_at'])): ?>
+        Scheduled for <?= e(date('j M Y, g:i a', strtotime($post['publish_at']))) ?>.
+      <?php endif; ?>
+    </span>
+    <a href="/admin/blog?id=<?= (int) $post['id'] ?>" class="shrink-0 bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded text-xs font-medium">Edit post</a>
+  </div>
+<?php endif; ?>
 <script type="application/ld+json"><?= json_encode([
     '@context' => 'https://schema.org',
     '@type' => 'BreadcrumbList',

@@ -12,6 +12,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     $action = $_POST['action'] ?? '';
 
+    if ($action === 'duplicate') {
+        require_once __DIR__ . '/../includes/audit.php';
+        $srcId = (int) $_POST['id'];
+        $src = $pdo->prepare('SELECT * FROM blog_posts WHERE id = ?');
+        $src->execute([$srcId]);
+        $orig = $src->fetch();
+        if ($orig) {
+            // Always lands as a draft with a fresh slug — duplicating a live post
+            // must never publish a second copy or collide on the unique slug.
+            $newTitle = mb_substr($orig['title'] . ' (copy)', 0, 200);
+            $pdo->prepare('INSERT INTO blog_posts (author_id, blog_category_id, title, slug, excerpt, body, cover_image, meta_description, status, published_at, publish_at)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, "draft", NULL, NULL)')
+                ->execute([
+                    $admin['id'], $orig['blog_category_id'], $newTitle, unique_slug('blog_posts', $newTitle),
+                    $orig['excerpt'], $orig['body'], $orig['cover_image'], $orig['meta_description'],
+                ]);
+            $newId = (int) $pdo->lastInsertId();
+            audit_log($admin['id'], 'blog_post_duplicated', 'blog_post', $newId, 'from #' . $srcId);
+            flash_set('success', 'Post duplicated as a draft — edit and publish when ready.');
+            redirect('/admin/blog?id=' . $newId);
+        }
+        flash_set('error', 'Post not found.');
+        redirect('/admin/blog');
+    }
+
     if ($action === 'delete') {
         require_once __DIR__ . '/../includes/audit.php';
         $id = (int) $_POST['id'];
@@ -147,9 +172,20 @@ $posts = $pdo->query(
       <div class="space-y-2">
         <?php foreach ($posts as $p): ?>
           <div class="flex items-center justify-between text-sm border-b pb-1">
-            <div>
+            <div class="min-w-0">
               <a href="/admin/blog?id=<?= $p['id'] ?>" class="text-indigo-600 hover:underline"><?= e($p['title']) ?></a>
               <div class="text-xs text-slate-400"><?= $p['status'] === 'draft' && $p['publish_at'] ? 'scheduled for ' . date('M j, g:i A', strtotime($p['publish_at'])) : e($p['status']) ?> &middot; by <?= e($p['username']) ?></div>
+              <div class="flex gap-2 mt-0.5">
+                <a href="/blog/<?= e($p['slug']) ?>" target="_blank" rel="noopener" class="text-[11px] text-slate-500 hover:text-indigo-600">
+                  <?= $p['status'] === 'published' ? 'View' : '👁 Preview' ?>
+                </a>
+                <form method="post" class="inline">
+                  <?= csrf_field() ?>
+                  <input type="hidden" name="action" value="duplicate">
+                  <input type="hidden" name="id" value="<?= $p['id'] ?>">
+                  <button class="text-[11px] text-slate-500 hover:text-indigo-600">⧉ Duplicate</button>
+                </form>
+              </div>
             </div>
             <form method="post" onsubmit="return confirm('Delete this post?');">
               <?= csrf_field() ?>
