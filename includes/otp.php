@@ -14,6 +14,7 @@
  * - Issuing is rate-limited per IP and per session by the caller.
  */
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/client_ip.php';
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/email_template.php';
 

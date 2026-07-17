@@ -18,6 +18,7 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/email_template.php';
+require_once __DIR__ . '/client_ip.php';
 
 /** Human-readable device string, e.g. "Chrome on Windows". */
 function device_label(string $userAgent): string

@@ -13,7 +13,7 @@ function app_log(string $level, string $message, array $context = []): void
         'level' => $level,
         'message' => $message,
         'context' => $context ?: (object) [],
-        'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+        'ip' => function_exists('client_ip') ? (client_ip() ?: null) : ($_SERVER['REMOTE_ADDR'] ?? null),
         'uri' => $_SERVER['REQUEST_URI'] ?? null,
         'user_id' => $_SESSION['user_id'] ?? null,
     ], JSON_UNESCAPED_SLASHES);

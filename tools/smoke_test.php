@@ -77,6 +77,7 @@ $routes = [
     '/admin/feedback' => [302],
     '/admin/settings' => [302],
     '/admin/security' => [302],
+    '/admin/logs' => [302],
     // Secrets: any status is fine (some redirect to a canonical URL) as long as
     // the response body never contains config markers. Checked separately below.
 ];
