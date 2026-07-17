@@ -69,9 +69,21 @@ $popularTags = $pdo->query('SELECT name, slug FROM tags ORDER BY use_count DESC 
 $allCategories = $pdo->query('SELECT * FROM categories WHERE is_active = 1 ORDER BY sort_order, name')->fetchAll();
 
 $pageTitle = ($activeCategory ? $activeCategory['name'] . ' questions' : 'Browse questions') . ' — ' . SITE_NAME;
-// An empty category/tag listing is thin content: let Google follow the links out
-// but keep the empty page itself out of the index until it has real questions.
-if (!$questions && ($categorySlug !== '' || ($_GET['tag'] ?? '') !== '')) {
+
+// Thin content. A category/tag page holding one question is a near-empty page,
+// and the catalog mass-produces ~700 of them — indexed together they read as a
+// site-wide quality problem, not merely 700 weak pages, and that can suppress
+// the pages worth ranking. So the bar is "has real content", not "is non-empty":
+// stay crawlable (follow keeps the links out useful) but stay out of the index
+// until the page earns it. Categories index themselves as they fill up; nothing
+// needs to be flipped by hand.
+//
+// Only page 1 is judged: there, count($questions) is the true total for anything
+// below $perPage, so the threshold is exact. Deeper pages of a paginated listing
+// belong to a category that already cleared the bar.
+const THIN_LISTING_MIN_QUESTIONS = 3;
+$isFilteredListing = $categorySlug !== '' || $tagSlug !== '';
+if ($isFilteredListing && $page === 1 && count($questions) < THIN_LISTING_MIN_QUESTIONS) {
     $pageRobots = 'noindex, follow';
 }
 require __DIR__ . '/includes/header.php';
