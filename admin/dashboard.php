@@ -138,41 +138,67 @@ try {
 <?php
 // Quick-links grid: the admin panel has 40+ tools, and the sidebar buries the
 // ones used daily. Moderator-only accounts never see admin-restricted cards.
-$quickLinks = [
-    ['Users', '👥', '/admin/users', 'Roles, bans, verification', true],
-    ['Moderation', '🛡️', '/admin/moderation', 'Reported content queue', true],
-    ['Feedback', '📝', '/admin/feedback', 'Bug reports & ideas', true],
-    ['Import Questions', '📥', '/admin/import_questions', 'Bulk CSV seeding', false],
-    ['Categories', '🗂️', '/admin/categories', 'Topics & bulk visibility', true],
-    ['Tags', '🏷️', '/admin/tags', 'Tag catalog', true],
-    ['Blog', '✍️', '/admin/blog', 'Posts & scheduling', true],
-    ['Pages', '📄', '/admin/pages', 'CMS pages', true],
-    ['Analytics', '📊', '/admin/analytics', 'Traffic & engagement', true],
-    ['Experts', '🎓', '/admin/experts', 'Applications & approvals', true],
-    ['Jobs', '💼', '/admin/jobs', 'Job board moderation', true],
-    ['Orders', '💳', '/admin/orders', 'Payments & invoices', false],
-    ['Site Health', '🩺', '/admin/site_health', 'System checks', false],
-    ['Audit Log', '📋', '/admin/audit_log', 'Who changed what', false],
-    ['Branding', '🎨', '/admin/site_settings', 'Name, logo, tagline', false],
-    ['Settings', '⚙️', '/admin/settings', 'Global configuration', false],
-];
 $isAdmin = $admin['role'] === 'admin';
 ?>
+<?php
+require_once __DIR__ . '/includes/admin_nav.php';
+$navGroups = admin_nav_groups($isAdmin);
+$toolCount = array_sum(array_map('count', $navGroups));
+?>
 <div class="bg-white border rounded-lg p-4 mb-6">
-  <h2 class="text-sm font-semibold mb-3">Quick links</h2>
-  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-    <?php foreach ($quickLinks as [$label, $icon, $href, $desc, $modOk]): ?>
-      <?php if (!$modOk && !$isAdmin) continue; ?>
-      <a href="<?= e($href) ?>" class="group flex items-start gap-3 border rounded-lg p-3 hover:border-indigo-400 hover:bg-indigo-50/50 transition">
-        <span class="text-xl leading-none mt-0.5"><?= $icon ?></span>
-        <span class="min-w-0">
-          <span class="block text-sm font-medium group-hover:text-indigo-700"><?= e($label) ?></span>
-          <span class="block text-xs text-slate-500 truncate"><?= e($desc) ?></span>
-        </span>
-      </a>
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+    <h2 class="text-sm font-semibold">All tools <span class="text-xs font-normal text-slate-400">(<?= $toolCount ?>)</span></h2>
+    <div class="flex items-center gap-2">
+      <input type="text" id="tool-filter" placeholder="Filter tools…" aria-label="Filter admin tools"
+             class="border rounded-lg px-3 py-1.5 text-sm w-44 sm:w-56">
+      <span class="hidden sm:inline text-[11px] text-slate-400">or press <kbd class="font-sans border rounded px-1">Ctrl</kbd>+<kbd class="font-sans border rounded px-1">K</kbd></span>
+    </div>
+  </div>
+  <div id="tool-groups" class="space-y-4">
+    <?php foreach ($navGroups as $groupName => $items): ?>
+      <section data-tool-group>
+        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2"><?= e($groupName) ?></h3>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <?php foreach ($items as [$label, $href, $icon, $desc, $keywords, $adminOnly]): ?>
+            <a href="<?= e($href) ?>" data-tool="<?= e(strtolower($label . ' ' . $desc . ' ' . $keywords)) ?>"
+               class="group flex items-start gap-3 border rounded-lg p-3 hover:border-indigo-400 hover:bg-indigo-50/50 transition">
+              <span class="text-xl leading-none mt-0.5"><?= $icon ?></span>
+              <span class="min-w-0">
+                <span class="block text-sm font-medium group-hover:text-indigo-700"><?= e($label) ?></span>
+                <span class="block text-xs text-slate-500 truncate"><?= e($desc) ?></span>
+              </span>
+            </a>
+          <?php endforeach; ?>
+        </div>
+      </section>
     <?php endforeach; ?>
   </div>
+  <p id="tool-empty" class="hidden text-sm text-slate-500 py-3">No tool matches that.</p>
 </div>
+<script>
+(function () {
+    var input = document.getElementById('tool-filter');
+    var empty = document.getElementById('tool-empty');
+    if (!input) return;
+    var cards = Array.prototype.slice.call(document.querySelectorAll('[data-tool]'));
+    var groups = Array.prototype.slice.call(document.querySelectorAll('[data-tool-group]'));
+    input.addEventListener('input', function () {
+        var q = input.value.trim().toLowerCase();
+        var hits = 0;
+        cards.forEach(function (card) {
+            var match = !q || card.getAttribute('data-tool').indexOf(q) !== -1;
+            card.classList.toggle('hidden', !match);
+            if (match) hits++;
+        });
+        // Hide a group whose every card filtered out, so no orphan headings remain.
+        groups.forEach(function (g) {
+            var visible = g.querySelectorAll('[data-tool]:not(.hidden)').length;
+            g.classList.toggle('hidden', visible === 0);
+        });
+        empty.classList.toggle('hidden', hits !== 0);
+    });
+})();
+</script>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
   <div class="bg-white border rounded-lg">

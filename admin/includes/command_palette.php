@@ -6,57 +6,14 @@
  * navigation: fuzzy subsequence matching (typing "usm" finds "User Management"),
  * arrow-key selection, Enter to go. Rendered from the same RBAC rules as the
  * sidebar, so a moderator never sees an admin-only destination.
+ *
+ * Destinations come from admin_nav.php, shared with the dashboard tool grid —
+ * see that file for why the two must not keep separate lists.
  */
+require_once __DIR__ . '/admin_nav.php';
 $isAdminRole = ($admin['role'] ?? '') === 'admin';
+$paletteItems = admin_nav_palette_items($isAdminRole);
 
-// [label, url, keywords, adminOnly]
-$paletteItems = [
-    ['Dashboard', '/admin/dashboard', 'home overview stats', false],
-    ['Users', '/admin/users', 'members accounts roles ban', false],
-    ['Moderation', '/admin/moderation', 'reports flags queue abuse', false],
-    ['Feedback', '/admin/feedback', 'bugs reports ideas', false],
-    ['Import Questions', '/admin/import_questions', 'csv bulk seed content', true],
-    ['Merge Questions', '/admin/merge_questions', 'duplicate combine', false],
-    ['Suggested Edits', '/admin/suggested_edits', 'revisions review', false],
-    ['Jobs', '/admin/jobs', 'careers board vacancies', false],
-    ['Uploads', '/admin/uploads', 'media files images', false],
-    ['Pages', '/admin/pages', 'cms content static', false],
-    ['Blog', '/admin/blog', 'posts articles writing', false],
-    ['Trash', '/admin/trash', 'deleted restore recover undo bin', false],
-    ['Categories', '/admin/categories', 'topics taxonomy', false],
-    ['Tags', '/admin/tags', 'labels taxonomy', false],
-    ['Announcements', '/admin/announcements', 'banner notice broadcast', false],
-    ['Testimonials', '/admin/testimonials', 'reviews quotes', false],
-    ['Changelog', '/admin/changelog', 'releases updates', false],
-    ['Roadmap', '/admin/roadmap', 'planned features votes', false],
-    ['Analytics', '/admin/analytics', 'traffic charts insights', false],
-    ['Experts', '/admin/experts', 'consultants approvals', false],
-    ['Groups', '/admin/groups', 'communities', false],
-    ['My 2FA', '/admin/security_2fa', 'two factor totp security', false],
-    ['Audit Log', '/admin/audit_log', 'history who changed what', true],
-    ['Security', '/admin/security', 'brute force failed logins locked attacks monitoring', true],
-    ['IP Blocks', '/admin/ip_blocks', 'ban firewall security', true],
-    ['Redirects', '/admin/redirects', 'urls 301 seo', true],
-    ['Newsletter', '/admin/newsletter', 'email campaign subscribers', true],
-    ['Site Health', '/admin/site_health', 'system checks status server ip', true],
-    ['Logs', '/admin/logs', 'errors warnings debug application log', true],
-    ['Mod Permissions', '/admin/moderator_permissions', 'rbac roles access', true],
-    ['Badges', '/admin/badges', 'achievements gamification', true],
-    ['Orders', '/admin/orders', 'payments purchases', true],
-    ['Payment Settings', '/admin/payment_settings', 'stripe razorpay paypal gateway', true],
-    ['Currencies', '/admin/currencies', 'money exchange rates', true],
-    ['Social Login', '/admin/social_login_settings', 'oauth google facebook', true],
-    ['Storage', '/admin/storage_settings', 's3 r2 cloudflare aws bucket cdn uploads media', true],
-    ['Integrations', '/admin/integrations', 'telegram tawk api', true],
-    ['Webhooks', '/admin/webhooks', 'events callbacks', true],
-    ['Expert Payouts', '/admin/expert_payouts', 'money consultants', true],
-    ['Community Polls', '/admin/site_polls', 'vote survey', true],
-    ['Ad Slots', '/admin/ad_slots', 'ads monetization banners', true],
-    ['Branding', '/admin/site_settings', 'logo name tagline theme', true],
-    ['Settings', '/admin/settings', 'configuration global options', true],
-    ['View public site', '/index', 'front end home', false],
-];
-$paletteItems = array_values(array_filter($paletteItems, fn($i) => !$i[3] || $isAdminRole));
 ?>
 <div id="cmdk" class="hidden fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-label="Command palette">
   <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" data-cmdk-close></div>

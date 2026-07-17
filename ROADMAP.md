@@ -18,17 +18,23 @@ they are never done.
    five security fixes. There is no remote configured (`git remote -v` is
    empty). A disk failure erases all of it. Cost: about one minute.
 
-2. **Apply migrations 029–033 in phpMyAdmin, in numeric order.** Five completed
-   features are deployed and inert until this runs:
-   | Migration | Unlocks | Consequence of waiting |
-   |---|---|---|
-   | `033_user_status` | Real bans | **Banned users can still log in** via passkey, OTP or social login |
-   | `032_brute_force` | Login lockout | Password guessing is unthrottled beyond rate limits |
-   | `031_soft_deletes` | Trash / restore | Admin deletes are permanent |
-   | `030_email_otp` | `/login_otp` | Page shows an honest "unavailable" state |
-   | `029_short_links` | `/s/<code>` sharing | Share links fall back to full URLs |
-   The code tolerates all five being absent (readiness shims), so nothing is
-   broken while waiting — the features simply do not exist yet.
+2. ~~**Apply migrations 029–033.**~~ **DONE 2026-07-17.** Verified live, not
+   assumed: `/login_otp` now renders the real form instead of the unavailable
+   fallback, and `otp_issue()` — the INSERT that used to 500 — completed for a
+   real account (302 → "Check your email"). Short links verified end to end:
+   `/s/mpnz94` → 301 → the question. 60/60 smoke, site healthy through three
+   `ALTER`s on `users`.
+
+   Still unverified (needs a DB or admin session, so it is yours to confirm):
+   | Migration | Check |
+   |---|---|
+   | `033_user_status` | Ban a throwaway account, then try to log in as it via **passkey/OTP/social** — the routes the old ban missed |
+   | `032_brute_force` | 8 wrong passwords on a throwaway account → expect a lockout message, not a 9th attempt |
+   | `031_soft_deletes` | Delete a blog post → it should appear in `/admin/trash`, restorable |
+
+   Note `record_failed_login()` fails open by design, so an HTTP 200 cannot
+   distinguish "row written" from "error swallowed". Only the lockout behaviour
+   above actually proves 032.
 
 3. **Schedule the five crons in hPanel** (`cron/` is CLI-only by design):
    `backup_db.php` (daily — this is your only backup), `publish_scheduled.php`
@@ -88,10 +94,18 @@ in place as prevention for when content grows — not as a fix for a live proble
 Ordered by value per hour. All of it is worth less than one afternoon of writing
 questions — see Tier 1.
 
-1. **Admin grid cards** (requested) — card layout for the admin link surfaces.
-   `admin/` currently has 44 pages reachable mainly via sidebar; a grouped grid
-   makes the surface navigable. Pure UI, low risk.
-3. **Video embeds, hardening + coverage** — `md_video_embed()` already extracts
+1. ~~**Admin grid cards.**~~ **DONE 2026-07-17.** The dashboard already had a
+   "Quick links" grid — covering 16 of 42 tools, missing Trash and Storage,
+   because a *third* private list had drifted from the palette's and the
+   sidebar's. Destinations now live in `admin/includes/admin_nav.php`, consumed
+   by both the palette and the grid, grouped into 7 sections with a live filter.
+   Verified: 42 tools for an admin, 20 for a moderator, no admin-only tool leaks
+   to either surface, no duplicate URLs, every URL resolves to a real file.
+
+   Follow-up: the sidebar (43 hardcoded links in `admin_header.php`) is still its
+   own list. Deliberately excluded — it carries live pending badges — but it does
+   mean a new tool must still be registered in two places rather than one.
+2. **Video embeds, hardening + coverage** — `md_video_embed()` already extracts
    the video ID and rebuilds the iframe from a hardcoded template (the safe
    pattern). Extend provider coverage inside that same pattern. Never
    interpolate a user-supplied URL into `src`.
