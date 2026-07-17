@@ -1,6 +1,41 @@
-title,body,category,tags
-"How do I file GST returns for a small online store?","I sell handmade products on Instagram and recently crossed the registration threshold. Which GST return forms apply to me, how often do I need to file, and what happens if I miss a deadline? Any tips for keeping the paperwork manageable would help.",ecommerce-gst-compliance,gst|ecommerce|tax
-"What documents are needed for a passport renewal in India?","My passport expires in three months. Do I need the same documents as a fresh application, or is renewal simpler? Also, is tatkal worth the extra fee if I have no urgent travel plans?",passport-visa,passport|documents
-"Best way to start learning Python for data analysis?","I work in accounting and want to automate reports. Should I start with pure Python basics first, or jump straight into pandas? Free resources preferred, and roughly how many hours a week for three months would be realistic?",data-science-analytics,python|data-science|learning
-"How do I improve my CIBIL score from 650 to 750?","My score is stuck around 650 due to a late credit card payment two years ago. I pay everything on time now. How long does it usually take to recover, and does closing old cards help or hurt?",credit-score-repair,cibil|credit|finance
-"Which is better for a first bike: 150cc or 200cc?","I am 22, commuting about 20 km daily in city traffic with occasional highway rides on weekends. Fuel efficiency matters but I do not want something underpowered on the highway. Budget is around 1.5 lakh.",two-wheelers-scooters,bikes|buying-advice
+title,body,answer,category,tags
+"How do I file GST returns for a small online store?","I sell handmade products on Instagram and recently crossed the registration threshold. Which GST return forms apply to me, how often do I need to file, and what happens if I miss a deadline? Any tips for keeping the paperwork manageable would help.","For a regular GST registration the two you will deal with every cycle are **GSTR-1** (details of your outward supplies) and **GSTR-3B** (the summary return where you actually pay). There is also an annual return, **GSTR-9**.
+
+If your turnover is under the QRMP threshold you can opt to file GSTR-1 and 3B quarterly while paying tax monthly, which cuts the paperwork a lot for a small store. Missing a deadline attracts a per-day late fee plus interest on any unpaid tax, and the fee accrues per return — so file a nil return on time rather than skipping it.
+
+Practical tip: keep one spreadsheet of every invoice with date, buyer state and HSN code as you go. Reconstructing three months of Instagram DMs at filing time is where small sellers lose their weekend.
+
+Thresholds and fees change — confirm the current numbers on the GST portal or with a CA before you rely on them.",ecommerce-gst-compliance,gst|ecommerce|tax
+"What documents are needed for a passport renewal in India?","My passport expires in three months. Do I need the same documents as a fresh application, or is renewal simpler? Also, is tatkal worth the extra fee if I have no urgent travel plans?","Renewal (officially *re-issue*) is simpler than a fresh application. You are generally asked for your existing passport plus self-attested copies of its first and last pages, proof of current address, and the online application receipt. Police verification is often lighter than for a fresh passport, and may be waived or done post-issue if your details have not changed.
+
+Where it gets more involved: if your address, name or appearance has changed materially, expect the supporting documents — and the verification — to look closer to a fresh application.
+
+On tatkal, with three months in hand you almost certainly do not need it. Normal processing is usually comfortable inside that window; tatkal exists to buy days, and if you are not short of days you are only buying the fee. Apply early instead — appointment slots, not processing, are the usual bottleneck.
+
+Requirements do get revised, so check the Passport Seva site for the current list before you book.",passport-visa,passport|documents
+"Best way to start learning Python for data analysis?","I work in accounting and want to automate reports. Should I start with pure Python basics first, or jump straight into pandas? Free resources preferred, and roughly how many hours a week for three months would be realistic?","Do not do a full ""learn Python properly"" course first. Coming from accounting, your motivation is reports, and six weeks of loops and classes with no spreadsheet in sight is where most people quit.
+
+Learn the minimum core — variables, lists, dicts, for loops, functions, and reading a file — which is about two weeks at a relaxed pace. Then go straight into **pandas**, because a DataFrame will feel like a spreadsheet you can talk to, and that familiarity is your advantage over someone learning it cold.
+
+A realistic budget is 5–6 hours a week for three months, and the split that works is roughly one hour learning to three hours applying it to a report you already produce by hand. Automate one real monthly report end to end. That single finished thing teaches more than any course, and it is also the thing you can show someone.
+
+Free and genuinely good: the official pandas ""10 minutes to pandas"" guide, then its cookbook. Python's own tutorial covers the core language.",data-science-analytics,python|data-science|learning
+"How do I improve my CIBIL score from 650 to 750?","My score is stuck around 650 due to a late credit card payment two years ago. I pay everything on time now. How long does it usually take to recover, and does closing old cards help or hurt?","Two things worth knowing up front. First, a single late payment from two years ago carries much less weight than it did when it was fresh — its influence fades as clean months accumulate. Second, and this is the one that surprises people: **closing old cards usually hurts**.
+
+It hurts twice. Your oldest account is what gives your credit history its length, and closing it shortens that. It also removes that card's limit from your total available credit, which pushes your utilisation ratio up overnight even though your spending did not change.
+
+The levers that actually move a score in your position:
+- **Utilisation.** Keep total balances under about 30% of your total limit, and under 10% is better. This is the fastest-moving factor — it can shift within a cycle or two.
+- **On-time payments, without exception.** You are already doing this; it needs time to accumulate, not effort.
+- **Do not chase new credit.** Each application adds a hard enquiry.
+
+Given consistent behaviour, 650 to 750 is typically a matter of several months to a year or so rather than weeks. Pull your report and check for errors too — a wrongly reported default is worth disputing, and that is the one thing that can move a score quickly.",credit-score-repair,cibil|credit|finance
+"Which is better for a first bike: 150cc or 200cc?","I am 22, commuting about 20 km daily in city traffic with occasional highway rides on weekends. Fuel efficiency matters but I do not want something underpowered on the highway. Budget is around 1.5 lakh.","For 20 km of daily city traffic with weekend highway runs, **150cc is the better fit** — and the gap is smaller than the numbers suggest.
+
+In city traffic you spend most of your time under 60 km/h, where a 200 is carrying weight and engine it never gets to use. On the highway a modern 150 sits at 80–90 km/h without drama; what a 200 buys you is easier overtaking and a calmer engine at 100+, which matters if your weekend ride is 200 km, and much less if it is 60.
+
+The real costs of stepping up are the ones you feel daily: a few km/l worse, heavier in traffic and at parking, and pricier on tyres, chain and insurance — paid every day for a benefit you get on Sundays.
+
+At 1.5 lakh you have the full 150–160 segment comfortably, with money left for a proper helmet, which is a better use of the difference than the extra 50cc.
+
+One caveat: if you are over about 85 kg or expect to ride pillion often on the highway, the 200 stops being surplus and starts being useful.",two-wheelers-scooters,bikes|buying-advice

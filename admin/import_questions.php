@@ -35,10 +35,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fh = fopen($_FILES['csv']['tmp_name'], 'r');
     $header = fgetcsv($fh);
     $header = array_map(fn($h) => strtolower(trim((string) $h)), $header ?: []);
+    // Excel and Google Sheets prefix a UTF-8 BOM on export — which is exactly the
+    // workflow this page tells people to use. Left in place, the first column
+    // arrives as "\xEF\xBB\xBFtitle", so `title` looks absent and the importer
+    // rejects the file with "must have a title column" while staring at one.
+    // trim() does not strip it: the BOM is bytes, not whitespace.
+    if (isset($header[0]) && str_starts_with($header[0], "\xEF\xBB\xBF")) {
+        $header[0] = substr($header[0], 3);
+    }
     $required = ['title', 'body'];
     if (array_diff($required, $header)) {
         fclose($fh);
-        flash_set('error', 'CSV must have a header row including at least: title, body. Optional: category, tags.');
+        flash_set('error', 'CSV must have a header row including at least: title, body. Optional: answer, category, tags.');
         redirect('/admin/import_questions');
     }
 
@@ -50,8 +58,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $bumpTag = $pdo->prepare('UPDATE tags SET use_count = use_count + 1 WHERE id = ?');
     $insert = $pdo->prepare('INSERT INTO questions (user_id, category_id, title, slug, body, status) VALUES (?, ?, ?, ?, ?, ?)');
     $dupCheck = $pdo->prepare('SELECT id FROM questions WHERE title = ? LIMIT 1');
+    // Seeded answers are marked accepted: a self-answered question is a legitimate
+    // Q&A pattern, and an accepted answer is what fills in acceptedAnswer on the
+    // QAPage structured data — the part search engines actually surface.
+    $insertAnswer = $pdo->prepare('INSERT INTO answers (question_id, user_id, body, is_accepted) VALUES (?, ?, ?, 1)');
+    $bumpAnswerCount = $pdo->prepare('UPDATE questions SET answer_count = answer_count + 1, status = ? WHERE id = ?');
 
-    $results = ['imported' => 0, 'skipped' => [], 'row' => 1];
+    $results = ['imported' => 0, 'answered' => 0, 'skipped' => [], 'row' => 1];
     while (($row = fgetcsv($fh)) !== false && $results['imported'] < 500) {
         $results['row']++;
         $title = trim((string) ($row[$col['title']] ?? ''));
@@ -81,11 +94,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        $insert->execute([$asUserId, $categoryId, $title, unique_slug('questions', $title), $body, $publish ? 'open' : 'draft']);
+        $status = $publish ? 'open' : 'draft';
+        $insert->execute([$asUserId, $categoryId, $title, unique_slug('questions', $title), $body, $status]);
         $questionId = (int) $pdo->lastInsertId();
 
+        // An answer column turns the import from "50 unanswered questions" — which
+        // makes a site look abandoned — into real Q&A pairs. Optional per row.
+        if (isset($col['answer'])) {
+            $answerBody = trim((string) ($row[$col['answer']] ?? ''));
+            if (mb_strlen($answerBody) >= 20) {
+                $insertAnswer->execute([$questionId, $asUserId, $answerBody]);
+                // A draft must stay a draft. The live answer flow sets status to
+                // 'answered' unconditionally, but here that would publish a question
+                // the importer was explicitly told to hold back.
+                $bumpAnswerCount->execute([$publish ? 'answered' : $status, $questionId]);
+                $results['answered']++;
+            } elseif ($answerBody !== '') {
+                $results['skipped'][] = "Row {$results['row']}: answer too short (min 20 chars) — question imported without it.";
+            }
+        }
+
         if (isset($col['tags'])) {
-            foreach (array_slice(array_filter(array_map('trim', explode('|', (string) ($row[$col['tags']] ?? '')))), 0, 5) as $tagName) {
+            // Deduplicated: "php|php" in one cell must not count the tag twice,
+            // since the link insert ignores the duplicate but the counter would not.
+            foreach (array_slice(array_unique(array_filter(array_map('trim', explode('|', (string) ($row[$col['tags']] ?? ''))))), 0, 5) as $tagName) {
                 $tagSlug = slugify($tagName);
                 $findTag->execute([$tagSlug]);
                 $tagId = (int) $findTag->fetchColumn();
@@ -109,7 +141,8 @@ $admins = $pdo->query("SELECT id, username FROM users WHERE role IN ('admin', 'm
 
 <?php if ($results): ?>
   <div class="bg-white border rounded-lg p-4 mb-6">
-    <p class="text-sm font-medium text-green-700">✅ Imported <?= (int) $results['imported'] ?> question<?= $results['imported'] === 1 ? '' : 's' ?>.</p>
+    <p class="text-sm font-medium text-green-700">✅ Imported <?= (int) $results['imported'] ?> question<?= $results['imported'] === 1 ? '' : 's' ?><?php
+        if ($results['answered']): ?>, <?= (int) $results['answered'] ?> with an accepted answer<?php endif; ?>.</p>
     <?php if ($results['skipped']): ?>
       <p class="text-sm font-medium text-amber-700 mt-2">Skipped <?= count($results['skipped']) ?>:</p>
       <ul class="text-xs text-slate-600 mt-1 space-y-0.5 max-h-48 overflow-y-auto">
@@ -123,9 +156,16 @@ $admins = $pdo->query("SELECT id, username FROM users WHERE role IN ('admin', 'm
   <p class="text-sm text-slate-600 mb-4">
     Upload a CSV with a header row. Columns: <code class="bg-slate-100 px-1 rounded">title</code> and
     <code class="bg-slate-100 px-1 rounded">body</code> (required),
+    <code class="bg-slate-100 px-1 rounded">answer</code>,
     <code class="bg-slate-100 px-1 rounded">category</code> (name or slug) and
     <code class="bg-slate-100 px-1 rounded">tags</code> (pipe-separated, e.g. <code class="bg-slate-100 px-1 rounded">php|mysql</code>) optional.
-    Markdown is supported in the body. Max 500 rows per upload; exact-title duplicates are skipped.
+    Markdown is supported in the body and the answer. Max 500 imports per upload; exact-title duplicates are skipped.
+    Files exported from Excel or Google Sheets work as-is.
+  </p>
+  <p class="text-sm text-slate-600 mb-4 border-l-2 border-indigo-300 pl-3">
+    <strong>Fill the <code class="bg-slate-100 px-1 rounded">answer</code> column.</strong> A question with no answer
+    helps nobody and makes the site read as abandoned — an imported answer is marked accepted, which is what fills in
+    <code class="bg-slate-100 px-1 rounded">acceptedAnswer</code> in the page's structured data.
   </p>
   <p class="text-sm mb-4">
     <a href="/assets/sample_questions.csv" download class="text-indigo-600 hover:underline">⬇ Download a sample CSV</a>
