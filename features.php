@@ -91,6 +91,13 @@ $featureGroups = [
         'Changelog manager', 'Announcement manager', 'Testimonial manager', 'Group manager', 'Expert approval panel', 'Payout panel',
         'Poll manager', 'Badge manager', 'Moderator permissions editor', 'Branding editor', 'Global settings panel',
     ],
+    '☁️ Storage & Media' => [
+        'S3-compatible object storage', 'Cloudflare R2 support', 'AWS S3 support', 'DigitalOcean Spaces support',
+        'Backblaze B2 support', 'Wasabi support', 'MinIO (self-hosted) support', 'One-click provider presets',
+        'Live connection test (write/read/delete)', 'Automatic fallback to local disk', 'AWS Signature V4 signing',
+        'Automatic image optimisation on upload', 'WebP conversion', 'Max-dimension downscaling', 'Quality control',
+        'Storage usage tracking', 'Per-provider monthly cost estimates', 'Egress cost modelling', 'CDN base URL support',
+    ],
     '🧩 Under the Hood' => [
         'Flash message system', 'Toast notifications', 'Relative "time ago" timestamps', 'Reusable question-card component',
         'Server-side markdown rendering endpoint', 'Currency preference endpoint', 'One-click content reporting API',

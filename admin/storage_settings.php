@@ -152,6 +152,77 @@ $providers = [
       </div>
 
       <div id="s3-config" class="<?= $currentDriver === 's3' ? '' : 'hidden' ?> space-y-4 border-t pt-4">
+        <?php
+        /**
+         * Provider presets. Every one of these speaks the S3 API, so the only
+         * thing that actually differs is the endpoint URL shape and the region
+         * token — which is exactly the part people get wrong and then blame the
+         * integration for. Clicking a preset fills those in and leaves the
+         * account-specific parts to be pasted.
+         */
+        $presets = [
+            'r2' => [
+                'label' => 'Cloudflare R2', 'badge' => 'recommended',
+                'endpoint' => 'https://<ACCOUNT_ID>.r2.cloudflarestorage.com', 'region' => 'auto',
+                'hint' => 'Dashboard → R2 → Manage API Tokens. Copy your Account ID into the endpoint. No egress fees — cheapest for public media.',
+            ],
+            'b2' => [
+                'label' => 'Backblaze B2', 'badge' => 'cheapest storage',
+                'endpoint' => 'https://s3.us-west-004.backblazeb2.com', 'region' => 'us-west-004',
+                'hint' => 'Use the S3-compatible endpoint shown on your bucket page — the region number must match it exactly.',
+            ],
+            'wasabi' => [
+                'label' => 'Wasabi', 'badge' => '',
+                'endpoint' => 'https://s3.ap-southeast-1.wasabisys.com', 'region' => 'ap-southeast-1',
+                'hint' => 'No egress fees, but a 90-day minimum retention charge applies to deleted objects.',
+            ],
+            'spaces' => [
+                'label' => 'DigitalOcean Spaces', 'badge' => '',
+                'endpoint' => 'https://blr1.digitaloceanspaces.com', 'region' => 'blr1',
+                'hint' => 'blr1 = Bangalore, the closest region for Indian traffic. $5/mo includes 250GB + 1TB transfer.',
+            ],
+            's3' => [
+                'label' => 'AWS S3', 'badge' => '',
+                'endpoint' => 'https://s3.ap-south-1.amazonaws.com', 'region' => 'ap-south-1',
+                'hint' => 'ap-south-1 = Mumbai. Watch egress: at ~5x reads it costs several times more than the storage itself.',
+            ],
+            'minio' => [
+                'label' => 'MinIO (self-hosted)', 'badge' => '',
+                'endpoint' => 'https://minio.example.com', 'region' => 'us-east-1',
+                'hint' => 'Any MinIO server. Region is usually us-east-1 unless you configured otherwise.',
+            ],
+        ];
+        ?>
+        <div>
+          <span class="block text-sm font-medium mb-1">Provider</span>
+          <div class="flex flex-wrap gap-1.5">
+            <?php foreach ($presets as $key => $p): ?>
+              <button type="button" class="text-xs border rounded-full px-3 py-1.5 bg-white hover:bg-indigo-50 hover:border-indigo-300"
+                      data-preset="<?= e(json_encode($p)) ?>">
+                <?= e($p['label']) ?>
+                <?php if ($p['badge']): ?><span class="text-indigo-600">· <?= e($p['badge']) ?></span><?php endif; ?>
+              </button>
+            <?php endforeach; ?>
+          </div>
+          <p id="preset-hint" class="hidden text-xs text-slate-600 bg-slate-50 border rounded px-3 py-2 mt-2"></p>
+        </div>
+        <script>
+        (function () {
+          // Presets only prefill the two fields people get wrong (endpoint shape
+          // and region). Credentials are never touched.
+          document.querySelectorAll('[data-preset]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              var p = JSON.parse(btn.getAttribute('data-preset'));
+              document.getElementById('s3_endpoint').value = p.endpoint;
+              document.getElementById('s3_region').value = p.region;
+              var hint = document.getElementById('preset-hint');
+              hint.textContent = p.label + ': ' + p.hint;
+              hint.classList.remove('hidden');
+              document.getElementById('s3_endpoint').focus();
+            });
+          });
+        })();
+        </script>
         <?php foreach ($fields as $key => [$label, $hint, $isSecret]): ?>
           <div>
             <label for="<?= e($key) ?>" class="block text-sm font-medium mb-1"><?= e($label) ?></label>
