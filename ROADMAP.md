@@ -36,12 +36,37 @@ they are never done.
    distinguish "row written" from "error swallowed". Only the lockout behaviour
    above actually proves 032.
 
-3. **Schedule the five crons in hPanel** (`cron/` is CLI-only by design):
-   `backup_db.php` (daily — this is your only backup), `publish_scheduled.php`
-   (every 15m — scheduled blog posts do not publish without it),
-   `resolve_bounties.php` (hourly), `tag_digest.php` (weekly),
-   `question_of_the_day.php` (daily).
-   Note `backup_db.php` is the one that matters: right now there is no backup.
+3. **Crons — three of five scheduled 2026-07-17.** Measured first: the account
+   had 9 cron jobs and *every one of them belonged to zestcommerce.in*. PuchoNow
+   had none, so nothing in `cron/` had ever run.
+
+   Scheduled (internal effects only, safe to run unattended):
+   | Cron | Schedule | uid |
+   |---|---|---|
+   | `backup_db.php` | `0 4 * * *` | `H3ghKBZ8Ff` |
+   | `publish_scheduled.php` | `*/15 * * * *` | `xzlTkXa3Hf` |
+   | `resolve_bounties.php` | `20 4 * * *` | `A7bWY2CeaL` |
+
+   Times avoid the existing zestcommerce jobs at 0 3 and 30 3. All use
+   `php <abs-path>` because these scripts are CLI-only guarded — a `wget` call
+   like the zestcommerce crons use would hit the 403 guard and do nothing.
+
+   Checked before scheduling the backup: it writes to `public_html/backups`,
+   which is inside the web root. `.htaccess:122` blocks it and a live request
+   for `/backups/anything.sql.gz` returns 403 — verified, not assumed, because
+   a readable dump there would expose every password hash and email.
+
+   **Not scheduled — these broadcast to people, so they need your sign-off:**
+   - `tag_digest.php` — sends real email to every user following a tag.
+   - `question_of_the_day.php` — posts to your public Telegram channel.
+
+   Say the word and they take a minute. Both are no-ops until there is content
+   worth sending, so there is no cost to waiting.
+
+   **Still unproven:** scheduled ≠ working. The first backup fires at 04:00; check
+   `/backups` has a `.sql.gz` afterwards, or read the cron output in hPanel. If
+   `mysqldump` is not on PATH for shared-hosting cron, the script exits 1 and the
+   fix is setting `MYSQLDUMP_PATH` in `.env`.
 
 ---
 
