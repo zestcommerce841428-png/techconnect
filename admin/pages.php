@@ -32,6 +32,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('/admin/pages');
     }
 
+    if ($action === 'duplicate') {
+        require_once __DIR__ . '/../includes/audit.php';
+        $srcId = (int) $_POST['id'];
+        $src = $pdo->prepare('SELECT * FROM pages WHERE id = ?');
+        $src->execute([$srcId]);
+        $orig = $src->fetch();
+        if ($orig) {
+            // Always lands unpublished with a fresh slug — mirrors admin/blog.php's
+            // duplicate: a live page must never gain a second published copy or
+            // collide on the unique slug.
+            $newTitle = mb_substr($orig['title'] . ' (copy)', 0, 200);
+            $catCol = page_categories_ready() ? ', page_category_id' : '';
+            $catVal = page_categories_ready() ? ', ?' : '';
+            $params = [$newTitle, unique_slug('pages', $newTitle), $orig['body'], $orig['meta_description'], $admin['id']];
+            if (page_categories_ready()) {
+                $params[] = $orig['page_category_id'] ?? null;
+            }
+            $pdo->prepare("INSERT INTO pages (title, slug, body, meta_description, is_published, show_in_footer, updated_by{$catCol})
+                           VALUES (?, ?, ?, ?, 0, 0, ?{$catVal})")
+                ->execute($params);
+            $newId = (int) $pdo->lastInsertId();
+            audit_log($admin['id'], 'page_duplicated', 'page', $newId, 'from #' . $srcId);
+            flash_set('success', 'Page duplicated as unpublished — edit and publish when ready.');
+            redirect('/admin/pages?id=' . $newId);
+        }
+        flash_set('error', 'Page not found.');
+        redirect('/admin/pages');
+    }
 
     $id = (int) ($_POST['id'] ?? 0);
     $title = trim($_POST['title'] ?? '');
@@ -39,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $metaDescription = trim($_POST['meta_description'] ?? '');
     $isPublished = isset($_POST['is_published']) ? 1 : 0;
     $showInFooter = isset($_POST['show_in_footer']) ? 1 : 0;
+    $categoryId = page_categories_ready() ? ((int) ($_POST['page_category_id'] ?? 0) ?: null) : null;
 
     if (mb_strlen($title) < 2 || mb_strlen($body) < 10) {
         flash_set('error', 'Title and body are required.');
@@ -46,13 +75,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($id) {
-        $pdo->prepare('UPDATE pages SET title=?, body=?, meta_description=?, is_published=?, show_in_footer=?, updated_by=? WHERE id=?')
-            ->execute([$title, $body, $metaDescription ?: null, $isPublished, $showInFooter, $admin['id'], $id]);
+        if (page_categories_ready()) {
+            $pdo->prepare('UPDATE pages SET title=?, body=?, meta_description=?, is_published=?, show_in_footer=?, page_category_id=?, updated_by=? WHERE id=?')
+                ->execute([$title, $body, $metaDescription ?: null, $isPublished, $showInFooter, $categoryId, $admin['id'], $id]);
+        } else {
+            $pdo->prepare('UPDATE pages SET title=?, body=?, meta_description=?, is_published=?, show_in_footer=?, updated_by=? WHERE id=?')
+                ->execute([$title, $body, $metaDescription ?: null, $isPublished, $showInFooter, $admin['id'], $id]);
+        }
         flash_set('success', 'Page updated.');
     } else {
         $slug = unique_slug('pages', $title);
-        $pdo->prepare('INSERT INTO pages (slug, title, body, meta_description, is_published, show_in_footer, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?)')
-            ->execute([$slug, $title, $body, $metaDescription ?: null, $isPublished, $showInFooter, $admin['id']]);
+        if (page_categories_ready()) {
+            $pdo->prepare('INSERT INTO pages (slug, title, body, meta_description, is_published, show_in_footer, page_category_id, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+                ->execute([$slug, $title, $body, $metaDescription ?: null, $isPublished, $showInFooter, $categoryId, $admin['id']]);
+        } else {
+            $pdo->prepare('INSERT INTO pages (slug, title, body, meta_description, is_published, show_in_footer, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?)')
+                ->execute([$slug, $title, $body, $metaDescription ?: null, $isPublished, $showInFooter, $admin['id']]);
+        }
         flash_set('success', 'Page created.');
     }
     redirect('/admin/pages');
@@ -66,9 +105,18 @@ if ($editId) {
     $editing = $stmt->fetch();
 }
 
-$pages = $pdo->query('SELECT id, slug, title, is_published, show_in_footer, updated_at FROM pages WHERE 1=1' . sd_filter() . ' ORDER BY title ASC')->fetchAll();
+$catReady = page_categories_ready();
+$pageCategories = $catReady ? $pdo->query('SELECT id, name FROM page_categories ORDER BY name')->fetchAll() : [];
+$pages = $pdo->query(
+    'SELECT p.id, p.slug, p.title, p.is_published, p.show_in_footer, p.updated_at' . ($catReady ? ', pc.name AS category_name' : '') . '
+     FROM pages p' . ($catReady ? ' LEFT JOIN page_categories pc ON pc.id = p.page_category_id' : '') . '
+     WHERE 1=1' . sd_filter('p') . ' ORDER BY p.title ASC'
+)->fetchAll();
 ?>
-<h1 class="text-2xl font-bold mb-4">CMS Pages</h1>
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-2xl font-bold">CMS Pages</h1>
+  <a href="/admin/page_categories" class="text-sm text-indigo-600 hover:underline">Manage categories</a>
+</div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
   <div class="lg:col-span-2">
@@ -85,9 +133,22 @@ $pages = $pdo->query('SELECT id, slug, title, is_published, show_in_footer, upda
           <label class="block text-sm font-medium mb-1">Body (Markdown)</label>
           <textarea name="body" required rows="12" class="w-full border rounded px-3 py-2 text-sm font-mono"><?= e($editing['body'] ?? '') ?></textarea>
         </div>
-        <div>
-          <label class="block text-sm font-medium mb-1">Meta description (SEO)</label>
-          <input type="text" name="meta_description" maxlength="255" class="w-full border rounded px-3 py-2 text-sm" value="<?= e($editing['meta_description'] ?? '') ?>">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">Meta description (SEO)</label>
+            <input type="text" name="meta_description" maxlength="255" class="w-full border rounded px-3 py-2 text-sm" value="<?= e($editing['meta_description'] ?? '') ?>">
+          </div>
+          <?php if ($catReady): ?>
+            <div>
+              <label class="block text-sm font-medium mb-1">Category</label>
+              <select name="page_category_id" class="w-full border rounded px-3 py-2 text-sm">
+                <option value="">None</option>
+                <?php foreach ($pageCategories as $pc): ?>
+                  <option value="<?= (int) $pc['id'] ?>" <?= ($editing['page_category_id'] ?? null) == $pc['id'] ? 'selected' : '' ?>><?= e($pc['name']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+          <?php endif; ?>
         </div>
         <label class="flex items-center gap-2 text-sm">
           <input type="checkbox" name="is_published" <?= ($editing['is_published'] ?? 1) ? 'checked' : '' ?>> Published
@@ -107,9 +168,23 @@ $pages = $pdo->query('SELECT id, slug, title, is_published, show_in_footer, upda
       <div class="space-y-2">
         <?php foreach ($pages as $p): ?>
           <div class="flex items-center justify-between text-sm border-b pb-1">
-            <div>
+            <div class="min-w-0">
               <a href="/admin/pages?id=<?= $p['id'] ?>" class="text-indigo-600 hover:underline"><?= e($p['title']) ?></a>
-              <div class="text-xs text-slate-400">/page/<?= e($p['slug']) ?> <?= $p['is_published'] ? '' : '(draft)' ?></div>
+              <div class="text-xs text-slate-400">
+                /page/<?= e($p['slug']) ?> <?= $p['is_published'] ? '' : '(draft)' ?>
+                <?php if (!empty($p['category_name'])): ?> &middot; <?= e($p['category_name']) ?><?php endif; ?>
+              </div>
+              <div class="flex gap-2 mt-0.5">
+                <a href="/page/<?= e($p['slug']) ?>" target="_blank" rel="noopener" class="text-[11px] text-slate-500 hover:text-indigo-600">
+                  <?= $p['is_published'] ? 'View' : '👁 Preview' ?>
+                </a>
+                <form method="post" class="inline">
+                  <?= csrf_field() ?>
+                  <input type="hidden" name="action" value="duplicate">
+                  <input type="hidden" name="id" value="<?= $p['id'] ?>">
+                  <button class="text-[11px] text-slate-500 hover:text-indigo-600">⧉ Duplicate</button>
+                </form>
+              </div>
             </div>
             <form method="post" onsubmit="return confirm('Delete this page?');">
               <?= csrf_field() ?>

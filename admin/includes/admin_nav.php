@@ -41,7 +41,9 @@ function admin_nav_groups(bool $isAdminRole): array
         ],
         '📰 Publishing' => [
             ['Blog', '/admin/blog', '✍️', 'Posts & scheduling', 'articles writing', false],
+            ['Blog Categories', '/admin/blog_categories', '🏷️', 'Organize blog posts', 'taxonomy topics', false],
             ['Pages', '/admin/pages', '📄', 'CMS pages', 'static content', false],
+            ['Page Categories', '/admin/page_categories', '🏷️', 'Organize CMS pages', 'taxonomy topics', false],
             ['Announcements', '/admin/announcements', '📢', 'Site-wide banner', 'notice broadcast', false],
             ['Testimonials', '/admin/testimonials', '💬', 'Reviews & quotes', 'quotes social proof', false],
             ['Changelog', '/admin/changelog', '📜', 'Public release notes', 'releases updates', false],

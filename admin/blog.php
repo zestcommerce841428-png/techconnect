@@ -109,7 +109,10 @@ $posts = $pdo->query(
     'SELECT p.id, p.title, p.slug, p.status, p.published_at, p.publish_at, u.username FROM blog_posts p JOIN users u ON u.id = p.author_id WHERE 1=1' . sd_filter('p') . ' ORDER BY p.created_at DESC LIMIT 50'
 )->fetchAll();
 ?>
-<h1 class="text-2xl font-bold mb-4">Blog</h1>
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-2xl font-bold">Blog</h1>
+  <a href="/admin/blog_categories" class="text-sm text-indigo-600 hover:underline">Manage categories</a>
+</div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
   <div class="lg:col-span-2">

@@ -83,6 +83,25 @@ function soft_deletes_ready(): bool
     return $ready;
 }
 
+/**
+ * True once migration 034 has added page_categories and pages.page_category_id.
+ * Same purpose as soft_deletes_ready(): lets this code deploy before or after
+ * the migration runs, in either order, without a 500 on a missing column.
+ */
+function page_categories_ready(): bool
+{
+    static $ready = null;
+    if ($ready === null) {
+        try {
+            db()->query('SELECT page_category_id FROM pages LIMIT 0');
+            $ready = true;
+        } catch (Throwable $e) {
+            $ready = false;
+        }
+    }
+    return $ready;
+}
+
 /** SQL fragment filtering out trashed rows, or '' pre-migration. */
 function sd_filter(string $alias = ''): string
 {

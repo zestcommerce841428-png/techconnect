@@ -13,7 +13,7 @@ $canPreview = $viewer && in_array($viewer['role'], ['admin', 'moderator'], true)
 $statusClause = $canPreview ? '' : " AND p.status = 'published'";
 
 $stmt = $pdo->prepare(
-    "SELECT p.*, u.username, bc.name AS category_name
+    "SELECT p.*, u.username, bc.name AS category_name, bc.slug AS category_slug
      FROM blog_posts p JOIN users u ON u.id = p.author_id
      LEFT JOIN blog_categories bc ON bc.id = p.blog_category_id
      WHERE p.slug = ?" . $statusClause . sd_filter('p')
@@ -110,7 +110,7 @@ require __DIR__ . '/includes/header.php';
   <h1 class="text-2xl font-bold"><?= e($post['title']) ?></h1>
   <div class="text-xs text-slate-500 mt-1">
     by <?= e($post['username']) ?> &middot; <?= time_ago($post['published_at']) ?>
-    <?php if ($post['category_name']): ?>&middot; <?= e($post['category_name']) ?><?php endif; ?>
+    <?php if ($post['category_name']): ?>&middot; <a href="/blog?category=<?= e($post['category_slug']) ?>" class="hover:underline"><?= e($post['category_name']) ?></a><?php endif; ?>
     &middot; <?= $readMinutes ?> min read
     &middot; <?= (int) $post['view_count'] ?> views
   </div>

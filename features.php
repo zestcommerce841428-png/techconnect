@@ -57,9 +57,12 @@ $featureGroups = [
         'Uniform responses against user enumeration',
     ],
     '📰 Content Management' => [
-        'Blog with categories', 'Scheduled blog publishing', 'Blog RSS feed', 'CMS pages with SEO fields', 'Footer page management',
-        'Site announcements banner', 'FAQ page', 'About / Privacy / Terms / Cookies pages', 'URL redirect manager (301s)',
-        'Uploads manager (admin)', 'WYSIWYG-style markdown rendering', 'Site branding settings (logo, name, tagline)',
+        'Blog with categories', 'Blog category admin (create/rename/delete)', 'Public blog filtering by category',
+        'CMS pages with categories', 'Page category admin (create/rename/delete)', 'Public pages index grouped by category',
+        'Page duplication (as unpublished draft)', 'Scheduled blog publishing', 'Blog RSS feed', 'CMS pages with SEO fields',
+        'Footer page management', 'Site announcements banner', 'FAQ page', 'About / Privacy / Terms / Cookies pages',
+        'URL redirect manager (301s)', 'Uploads manager (admin)', 'WYSIWYG-style markdown rendering',
+        'Site branding settings (logo, name, tagline)',
     ],
     '🚀 SEO & Performance' => [
         'Clean extensionless URLs', 'Canonical URLs on every page', 'Dynamic XML sitemap (pages, questions, tags, categories, blog)',
