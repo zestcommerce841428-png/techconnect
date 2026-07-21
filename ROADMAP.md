@@ -14,9 +14,18 @@ A feature that needs an unapplied migration is not "nearly done"; it is blocked.
 These cannot be done from the codebase. They are ordered by what is lost if
 they are never done.
 
-1. **Push to a git remote.** 36 commits exist on exactly one laptop, including
-   five security fixes. There is no remote configured (`git remote -v` is
-   empty). A disk failure erases all of it. Cost: about one minute.
+1. ~~**Push to a git remote.**~~ **DONE 2026-07-17.** 48 commits pushed to
+   `github.com/zestcommerce841428-png/techconnect`. The repo was not empty —
+   it held 5 commits from before the rebrand, unrelated git history. Checked
+   before merging rather than force-pushing over it: every file the two trees
+   shared, diffed one direction only. Remote's `admin/users.php` still had the
+   `'!banned:'`-prefix ban this session fixed because it never stopped
+   passkey/OTP/social login; remote's `.htaccess` still had the exact rewrite
+   bug that caused `/<page>/<anything>` → 500. Nothing on the remote wasn't
+   already superseded. Merged with `--allow-unrelated-histories`, resolved all
+   42 conflicts in favor of local, zero leftover conflict markers, every
+   touched file linted, 60/60 smoke before and after. The old history is kept,
+   not erased — it's a real merge commit.
 
 2. ~~**Apply migrations 029–033.**~~ **DONE 2026-07-17.** Verified live, not
    assumed: `/login_otp` now renders the real form instead of the unavailable
@@ -130,13 +139,26 @@ questions — see Tier 1.
    Follow-up: the sidebar (43 hardcoded links in `admin_header.php`) is still its
    own list. Deliberately excluded — it carries live pending badges — but it does
    mean a new tool must still be registered in two places rather than one.
-2. **Video embeds, hardening + coverage** — `md_video_embed()` already extracts
-   the video ID and rebuilds the iframe from a hardcoded template (the safe
-   pattern). Extend provider coverage inside that same pattern. Never
-   interpolate a user-supplied URL into `src`.
-4. **Storage: usage dashboard on real numbers** — the cost estimator exists;
-   feed it actual `uploads/` totals so the estimate reflects this site rather
-   than a model.
+2. ~~**Video embeds, hardening + coverage.**~~ **DONE 2026-07-17.** Extended
+   from 2 providers to 10 (added Dailymotion, Loom, Streamable, Google Drive,
+   CodePen, JSFiddle, CodeSandbox, Spotify) inside the same rule: capture an
+   ID, rebuild `src` from a hardcoded template, nothing from the user's URL
+   reaches the iframe. This function builds an iframe src from user input,
+   which is exactly where the stored XSS lived, so it was attacked before
+   shipping — 16 payloads refused, 14 legitimate URLs embed with a clean src.
+   features.php now computes 310, verified live.
+3. ~~**Storage: usage dashboard on real numbers.**~~ Already done — recorded
+   here because it looked like the next item and measurement said otherwise
+   (same mistake as the thin-content item above; check before building).
+   `admin/storage_settings.php` already queries `SUM(size)` from the real
+   `uploads` table for both total and 30-day growth, not a synthetic model.
+4. ~~**Importer: category typo suggestions.**~~ **DONE 2026-07-17.** With 711
+   categories an exact-name match is a hard target; a typo silently skipped
+   the whole row. Now suggests up to 3 plausible categories, tested against
+   the live 711-category catalog rather than an invented list — that surfaced
+   real noise (a 3-letter needle like "gst" matching "rust" on edit distance
+   alone) which is now filtered by requiring substring evidence to outrank
+   fuzzy distance, and a tighter distance limit on short input.
 
 ---
 
