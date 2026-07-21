@@ -9,11 +9,13 @@
  * @param string $postTable   the table that references this category
  * @param string $postFkCol   the FK column on $postTable
  * @param string $entityLabel singular label for audit_log target_type, e.g. 'blog_category'
- * @param string $readyCheck  callable name that returns bool once the schema exists (page_categories
- *                             has no migration gate of its own beyond page_categories_ready(); blog_categories
- *                             shipped in migration 003 so it is always ready)
+ * @param callable $readyCheck returns bool once the schema exists — a string function name
+ *                             (page_categories_ready) or a closure (blog_categories.php passes
+ *                             fn() => true, since blog_categories shipped in migration 003 and
+ *                             is always ready). Must be `callable`, not `string`: a Closure is
+ *                             not a string, and PHP does not coerce between them.
  */
-function render_category_manager(array $admin, string $table, string $postTable, string $postFkCol, string $entityLabel, string $readyCheck): void
+function render_category_manager(array $admin, string $table, string $postTable, string $postFkCol, string $entityLabel, callable $readyCheck): void
 {
     $pdo = db();
     $ready = $readyCheck();
