@@ -98,6 +98,14 @@ $featureGroups = [
         'Automatic image optimisation on upload', 'WebP conversion', 'Max-dimension downscaling', 'Quality control',
         'Storage usage tracking', 'Per-provider monthly cost estimates', 'Egress cost modelling', 'CDN base URL support',
     ],
+    '▶️ Rich media embeds' => [
+        'YouTube embeds (watch, youtu.be, Shorts, live)', 'Privacy-mode YouTube (youtube-nocookie)', 'Vimeo embeds',
+        'Dailymotion embeds (dailymotion.com & dai.ly)', 'Loom screen-recording embeds', 'Streamable embeds',
+        'Google Drive video embeds', 'CodePen live embeds', 'JSFiddle live embeds', 'CodeSandbox embeds',
+        'Spotify embeds (track, album, playlist, episode, show)', 'Paste-a-URL embedding (no shortcode syntax)',
+        'ID-only extraction (user URL never reaches the iframe)', 'Per-provider sizing (16:9 video vs fixed-height audio)',
+        'Lazy-loaded iframes', 'Sandboxed referrer policy on embeds',
+    ],
     '🧩 Under the Hood' => [
         'Flash message system', 'Toast notifications', 'Relative "time ago" timestamps', 'Reusable question-card component',
         'Server-side markdown rendering endpoint', 'Currency preference endpoint', 'One-click content reporting API',

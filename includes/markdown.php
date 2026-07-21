@@ -85,24 +85,78 @@ function render_markdown(string $source): string
 function md_video_embed(string $line): ?string
 {
     $line = trim($line);
-    $patterns = [
+
+    // Each provider: [regex, src template, sizing, iframe title].
+    //
+    // The security rule that must never be relaxed: the regex captures nothing
+    // but an ID, and the src is rebuilt from the hardcoded template. No part of
+    // the user's URL — not the query string, not the fragment, not the host —
+    // ever reaches the iframe. Every capture group is charset-limited, so a
+    // capture cannot smuggle a quote, an angle bracket or a second attribute.
+    // Adding a provider means adding a strict pattern here, never loosening one.
+    //
+    // Sizing: ['ratio' => n] for anything with an aspect ratio (video), or
+    // ['px' => n] for players with a fixed natural height (audio, code) — a
+    // 16:9 box around a Spotify player is mostly empty space.
+    $providers = [
+        // ---- Video -------------------------------------------------------
         // youtu.be/ID · youtube.com/watch?v=ID · /embed/ID · /shorts/ID · /live/ID
-        '~^https?://(?:www\.)?(?:youtube\.com/(?:watch\?(?:[\w=&;-]*&)?v=|embed/|shorts/|live/)|youtu\.be/)([A-Za-z0-9_-]{11})(?:[?&#][^\s]*)?$~i'
-            => 'https://www.youtube-nocookie.com/embed/%s',
+        ['~^https?://(?:www\.)?(?:youtube\.com/(?:watch\?(?:[\w=&;-]*&)?v=|embed/|shorts/|live/)|youtu\.be/)([A-Za-z0-9_-]{11})(?:[?&#][^\s]*)?$~i',
+            'https://www.youtube-nocookie.com/embed/%s', ['ratio' => 56.25], 'Embedded video'],
         // vimeo.com/123456789
-        '~^https?://(?:www\.)?vimeo\.com/(\d{6,12})(?:[?#][^\s]*)?$~i'
-            => 'https://player.vimeo.com/video/%s',
+        ['~^https?://(?:www\.)?vimeo\.com/(\d{6,12})(?:[?#][^\s]*)?$~i',
+            'https://player.vimeo.com/video/%s', ['ratio' => 56.25], 'Embedded video'],
+        // dailymotion.com/video/xABC123 · dai.ly/xABC123
+        ['~^https?://(?:www\.)?(?:dailymotion\.com/video/|dai\.ly/)([A-Za-z0-9]{5,12})(?:[?&#][^\s]*)?$~i',
+            'https://www.dailymotion.com/embed/video/%s', ['ratio' => 56.25], 'Embedded video'],
+        // loom.com/share/<32 hex> — screen recordings, the natural way to answer
+        // a "how do I do this" question with a walkthrough.
+        ['~^https?://(?:www\.)?loom\.com/(?:share|embed)/([a-f0-9]{32})(?:[?&#][^\s]*)?$~i',
+            'https://www.loom.com/embed/%s', ['ratio' => 56.25], 'Embedded screen recording'],
+        // streamable.com/abc12
+        ['~^https?://(?:www\.)?streamable\.com/(?:e/)?([a-z0-9]{4,10})(?:[?&#][^\s]*)?$~i',
+            'https://streamable.com/e/%s', ['ratio' => 56.25], 'Embedded video'],
+        // drive.google.com/file/d/<id>/view — pairs with the storage integrations.
+        ['~^https?://drive\.google\.com/file/d/([A-Za-z0-9_-]{10,60})(?:/[^\s]*)?$~i',
+            'https://drive.google.com/file/d/%s/preview', ['ratio' => 56.25], 'Embedded video'],
+
+        // ---- Code --------------------------------------------------------
+        // codepen.io/<user>/pen/<id> — two captures, both charset-limited.
+        ['~^https?://(?:www\.)?codepen\.io/([A-Za-z0-9_-]{1,40})/(?:pen|embed|details|full)/([A-Za-z0-9]{5,12})(?:[?&#][^\s]*)?$~i',
+            'https://codepen.io/%s/embed/%s?default-tab=result', ['px' => 420], 'Embedded code example'],
+        // jsfiddle.net/<user>/<id> and jsfiddle.net/<id>
+        ['~^https?://(?:www\.)?jsfiddle\.net/([A-Za-z0-9_-]{1,40})/([A-Za-z0-9]{4,12})/?(?:[?&#][^\s]*)?$~i',
+            'https://jsfiddle.net/%s/%s/embedded/result,html,css,js/', ['px' => 420], 'Embedded code example'],
+        // codesandbox.io/s/<id> · /embed/<id> · /p/sandbox/<id>
+        ['~^https?://(?:www\.)?codesandbox\.io/(?:s|embed|p/sandbox)/([A-Za-z0-9_-]{4,40})(?:[?&#][^\s]*)?$~i',
+            'https://codesandbox.io/embed/%s', ['px' => 460], 'Embedded code sandbox'],
+
+        // ---- Audio -------------------------------------------------------
+        // open.spotify.com/{track|album|playlist|episode|show}/<id>
+        ['~^https?://open\.spotify\.com/(track|album|playlist|episode|show)/([A-Za-z0-9]{16,30})(?:[?&#][^\s]*)?$~i',
+            'https://open.spotify.com/embed/%s/%s', ['px' => 152], 'Embedded audio'],
     ];
-    foreach ($patterns as $re => $template) {
-        if (preg_match($re, $line, $m)) {
-            $src = sprintf($template, $m[1]);
-            // 16:9 without aspect-ratio utilities, so it works in email/print too.
-            return '<div class="relative w-full my-4 rounded-lg overflow-hidden bg-slate-900" style="padding-top:56.25%">'
-                . '<iframe src="' . e($src) . '" title="Embedded video" loading="lazy"'
-                . ' class="absolute inset-0 w-full h-full" frameborder="0"'
-                . ' allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"'
-                . ' referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>';
+
+    foreach ($providers as [$re, $template, $size, $title]) {
+        if (!preg_match($re, $line, $m)) {
+            continue;
         }
+        // vsprintf over every capture: providers with a user+id pair need two.
+        $src = vsprintf($template, array_slice($m, 1));
+        $common = ' title="' . e($title) . '" loading="lazy" frameborder="0"'
+            . ' allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"'
+            . ' referrerpolicy="strict-origin-when-cross-origin" allowfullscreen';
+
+        if (isset($size['px'])) {
+            // Fixed-height player: no ratio box, so nothing is letterboxed.
+            return '<iframe src="' . e($src) . '"' . $common
+                . ' class="w-full my-4 rounded-lg border dark:border-slate-800"'
+                . ' style="height:' . (int) $size['px'] . 'px"></iframe>';
+        }
+        // Ratio box without aspect-ratio utilities, so it survives email/print.
+        return '<div class="relative w-full my-4 rounded-lg overflow-hidden bg-slate-900" style="padding-top:' . e((string) $size['ratio']) . '%">'
+            . '<iframe src="' . e($src) . '"' . $common
+            . ' class="absolute inset-0 w-full h-full"></iframe></div>';
     }
     return null;
 }
