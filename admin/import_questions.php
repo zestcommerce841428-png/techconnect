@@ -52,6 +52,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $col = array_flip($header);
     $findCategory = $pdo->prepare('SELECT id FROM categories WHERE slug = ? OR name = ? LIMIT 1');
+
+    // Category catalog, held in memory for the suggestion path below. With 700+
+    // categories an exact-name match is a genuinely hard target: "GST" will not
+    // find "ecommerce-gst-compliance", and the row is then skipped — so a typo
+    // silently costs a question on the one workflow meant to fix an empty site.
+    // Skipping (rather than importing uncategorised) is deliberate: it keeps the
+    // fix loop clean. Correct the CSV, re-upload, and the rows that already
+    // landed are skipped as duplicate titles while the fixed ones import.
+    $catalog = [];
+    try {
+        foreach ($pdo->query('SELECT name, slug FROM categories WHERE is_active = 1') as $c) {
+            $catalog[] = ['name' => $c['name'], 'slug' => $c['slug'],
+                          'hay' => mb_strtolower($c['name'] . ' ' . str_replace('-', ' ', $c['slug']))];
+        }
+    } catch (Throwable $e) {
+        $catalog = [];
+    }
+
+    /** Up to 3 plausible categories for a value that matched nothing. */
+    $suggestCategories = function (string $value) use ($catalog): array {
+        $needle = mb_strtolower(trim($value));
+        if ($needle === '' || !$catalog) {
+            return [];
+        }
+        $exact = [];
+        $fuzzy = [];
+        foreach ($catalog as $c) {
+            if (str_contains($c['hay'], $needle) || str_contains($needle, mb_strtolower($c['name']))) {
+                // Shorter names rank first: for "job", "government-jobs" is a more
+                // useful suggestion than "bpo-customer-support-jobs".
+                $exact[$c['slug']] = -mb_strlen($c['name']);
+                continue;
+            }
+            // Distance against the name, the slug, and each individual word, so a
+            // misspelling of one word ("helth") still finds "Health & Wellness"
+            // even though the full-string distance is large.
+            $best = PHP_INT_MAX;
+            foreach (array_merge([mb_strtolower($c['name']), str_replace('-', ' ', $c['slug'])],
+                                 preg_split('/[\s&\-]+/', $c['hay'], -1, PREG_SPLIT_NO_EMPTY) ?: []) as $probe) {
+                $best = min($best, levenshtein($needle, $probe));
+            }
+            // Tight, and tighter still for short input: on a 3-letter needle a
+            // distance of 2 is noise ("gst" is 2 away from "rust"), not a typo.
+            $limit = mb_strlen($needle) <= 5 ? 1 : 2;
+            if ($best <= $limit) {
+                $fuzzy[$c['slug']] = -$best;
+            }
+        }
+        // Substring hits are always better evidence than edit distance, so when
+        // any exist the fuzzy list is dropped entirely rather than padding to 3.
+        $scored = $exact ?: $fuzzy;
+        arsort($scored);
+        return array_slice(array_keys($scored), 0, 3);
+    };
     $findTag = $pdo->prepare('SELECT id FROM tags WHERE slug = ? LIMIT 1');
     $makeTag = $pdo->prepare('INSERT INTO tags (name, slug) VALUES (?, ?)');
     $linkTag = $pdo->prepare('INSERT IGNORE INTO question_tags (question_id, tag_id) VALUES (?, ?)');
@@ -89,7 +143,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $findCategory->execute([slugify($catVal), $catVal]);
             $categoryId = (int) $findCategory->fetchColumn() ?: null;
             if (!$categoryId) {
-                $results['skipped'][] = "Row {$results['row']}: unknown category \"{$catVal}\".";
+                $hints = $suggestCategories($catVal);
+                $results['skipped'][] = "Row {$results['row']}: unknown category \"{$catVal}\"."
+                    . ($hints ? ' Did you mean: ' . implode(', ', $hints) . '?' : ' Check /admin/categories for valid names.');
                 continue;
             }
         }
