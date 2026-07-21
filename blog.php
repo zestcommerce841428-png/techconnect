@@ -6,9 +6,16 @@ $page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = 10;
 $offset = paginate_offset($page, $perPage);
 $categorySlug = trim($_GET['category'] ?? '');
+$search = trim($_GET['q'] ?? '');
 
 $where = "p.status = 'published' AND p.published_at <= NOW()";
 $params = [];
+if ($search !== '') {
+    // ft_title_body already exists on blog_posts (migration 003) — it was never
+    // wired to a UI. No new index needed, just the query and the form.
+    $where .= ' AND MATCH(p.title, p.body) AGAINST (? IN NATURAL LANGUAGE MODE)';
+    $params[] = $search;
+}
 $activeCategory = null;
 if ($categorySlug !== '') {
     $catStmt = $pdo->prepare('SELECT id, name, slug FROM blog_categories WHERE slug = ?');
@@ -47,12 +54,22 @@ $pageTitle = ($activeCategory ? $activeCategory['name'] . ' — ' : '') . 'Blog 
 $pageDescription = $activeCategory
     ? $activeCategory['name'] . ' articles from ' . SITE_NAME . '.'
     : 'News, guides, and updates from ' . SITE_NAME . '.';
+if ($search !== '') {
+    // Search-result URLs are classic duplicate-content bait — same pattern as
+    // questions.php's empty-listing noindex, applied here regardless of result
+    // count since a ?q= page is never the canonical place to land on a topic.
+    $pageRobots = 'noindex, follow';
+}
 require __DIR__ . '/includes/header.php';
 ?>
 <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
   <h1 class="text-2xl font-bold"><?= $activeCategory ? e($activeCategory['name']) : 'Blog' ?></h1>
   <?php if ($activeCategory): ?><a href="/blog" class="text-xs text-indigo-600 hover:underline">Clear category</a><?php endif; ?>
 </div>
+<form method="get" class="mb-4">
+  <?php if ($categorySlug !== ''): ?><input type="hidden" name="category" value="<?= e($categorySlug) ?>"><?php endif; ?>
+  <input type="text" name="q" value="<?= e($search) ?>" placeholder="Search the blog…" class="w-full sm:max-w-sm border rounded-lg px-3 py-2 text-sm">
+</form>
 <?php if ($categories): ?>
   <div class="flex flex-wrap gap-2 mb-5">
     <a href="/blog" class="text-sm px-3 py-1.5 rounded-full border <?= !$activeCategory ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white hover:border-indigo-400' ?>">All</a>
@@ -65,7 +82,13 @@ require __DIR__ . '/includes/header.php';
 <?php endif; ?>
 <?php if (!$posts): ?>
   <div class="border rounded-lg p-8 text-center bg-white text-slate-600">
-    <?= $activeCategory ? 'No posts in this category yet.' : 'No posts published yet.' ?>
+    <?php if ($search !== ''): ?>
+      No posts match "<?= e($search) ?>".
+    <?php elseif ($activeCategory): ?>
+      No posts in this category yet.
+    <?php else: ?>
+      No posts published yet.
+    <?php endif; ?>
   </div>
 <?php else: ?>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -86,7 +109,7 @@ require __DIR__ . '/includes/header.php';
     <?php endforeach; ?>
   </div>
   <div class="flex justify-between mt-4 text-sm">
-    <?php $pageParams = array_filter(['category' => $categorySlug]); ?>
+    <?php $pageParams = array_filter(['category' => $categorySlug, 'q' => $search]); ?>
     <?php if ($page > 1): ?><a class="text-indigo-600 hover:underline" href="?<?= http_build_query(array_merge($pageParams, ['page' => $page - 1])) ?>">&larr; Previous</a><?php else: ?><span></span><?php endif; ?>
     <?php if (count($posts) === $perPage): ?><a class="text-indigo-600 hover:underline" href="?<?= http_build_query(array_merge($pageParams, ['page' => $page + 1])) ?>">Next &rarr;</a><?php endif; ?>
   </div>

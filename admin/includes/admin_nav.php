@@ -41,6 +41,7 @@ function admin_nav_groups(bool $isAdminRole): array
         ],
         '📰 Publishing' => [
             ['Blog', '/admin/blog', '✍️', 'Posts & scheduling', 'articles writing', false],
+            ['Import Blog Posts', '/admin/import_blog_posts', '📥', 'Bulk CSV seeding', 'csv bulk seed content articles', false],
             ['Blog Categories', '/admin/blog_categories', '🏷️', 'Organize blog posts', 'taxonomy topics', false],
             ['Pages', '/admin/pages', '📄', 'CMS pages', 'static content', false],
             ['Page Categories', '/admin/page_categories', '🏷️', 'Organize CMS pages', 'taxonomy topics', false],

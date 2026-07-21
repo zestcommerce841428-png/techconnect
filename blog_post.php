@@ -51,6 +51,28 @@ $next = $pdo->prepare("SELECT title, slug FROM blog_posts
 $next->execute([$post['published_at']]);
 $nextPost = $next->fetch() ?: null;
 
+// Related posts: same category first (closest topical match), backfilled with
+// recent posts if the category is thin or the post is uncategorised — a reader
+// who finishes an article should never hit a dead end with nowhere else to go.
+$related = [];
+if (!empty($post['blog_category_id'])) {
+    $sameCategory = $pdo->prepare("SELECT id, title, slug, cover_image FROM blog_posts
+        WHERE status = 'published' AND published_at <= NOW() AND blog_category_id = ? AND id != ?" . sd_filter() . "
+        ORDER BY published_at DESC LIMIT 3");
+    $sameCategory->execute([$post['blog_category_id'], $post['id']]);
+    $related = $sameCategory->fetchAll();
+}
+if (count($related) < 3) {
+    $need = 3 - count($related);
+    $exclude = array_merge([$post['id']], array_column($related, 'id'));
+    $placeholders = implode(',', array_fill(0, count($exclude), '?'));
+    $backfill = $pdo->prepare("SELECT id, title, slug, cover_image FROM blog_posts
+        WHERE status = 'published' AND published_at <= NOW() AND id NOT IN ($placeholders)" . sd_filter() . "
+        ORDER BY published_at DESC LIMIT $need");
+    $backfill->execute($exclude);
+    $related = array_merge($related, $backfill->fetchAll());
+}
+
 $readMinutes = reading_time($post['body']);
 
 $pageTitle = $post['title'] . ' — ' . SITE_NAME;
@@ -125,6 +147,22 @@ require __DIR__ . '/includes/header.php';
     <a href="https://www.linkedin.com/sharing/share-offsite/?url=<?= $bpUrl ?>" target="_blank" rel="noopener" class="text-xs border rounded-full px-3 py-1.5 hover:bg-slate-50">LinkedIn</a>
   </div>
 </article>
+
+<?php if ($related): ?>
+  <div class="max-w-2xl mx-auto mt-4">
+    <h2 class="text-sm font-semibold text-slate-500 mb-2">You might also like</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <?php foreach ($related as $r): ?>
+        <a href="/blog/<?= e($r['slug']) ?>" class="block bg-white border rounded-lg overflow-hidden hover:border-indigo-400">
+          <?php if ($r['cover_image']): ?>
+            <img src="<?= e($r['cover_image']) ?>" alt="" class="w-full h-20 object-cover">
+          <?php endif; ?>
+          <div class="p-2.5 text-xs font-medium line-clamp-2"><?= e($r['title']) ?></div>
+        </a>
+      <?php endforeach; ?>
+    </div>
+  </div>
+<?php endif; ?>
 
 <?php if ($prevPost || $nextPost): ?>
   <nav class="max-w-2xl mx-auto mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3" aria-label="More posts">
